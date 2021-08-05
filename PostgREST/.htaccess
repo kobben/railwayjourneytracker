@@ -1,0 +1,8 @@
+# Alternate default index pages
+DirectoryIndex index.html
+
+# Deny access to .conf files !
+<FilesMatch "\.(conf)$">
+	Order allow,deny
+	Deny from all
+</FilesMatch>

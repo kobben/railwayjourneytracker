@@ -1,0 +1,42 @@
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>Construct Legs</title>
+
+  <!--  //load OpenLayers lib-->
+  <script src="lib/ol.js"></script>
+  <link href="lib/ol.css" rel="stylesheet">
+
+  <!--  load app styles and javascript-->
+  <link href="css/style.css" rel="stylesheet">
+
+  <script src="lib/postgrest-client.min.js"></script>
+
+  <script src="js/DB.js"></script>
+  <script src="js/Messages.js"></script>
+  <script src="js/Models.js"></script>
+  <script src="js/Functions.js"></script>
+  <script src="js/HTMLTemplates.js"></script>
+
+  <script src="js/constructleg.js"></script>
+
+</head>
+<body onload="init();">
+<div id="appDiv">
+  <div id="mapDiv"></div>
+  <div id="workflowDiv">
+    <table id="menubar"><tr>
+      <td id="wfmsg">OSMrailways</td>
+      <td id="menuBtns">
+        <input type='button' class='bigbutton' id='action3Btn' value='ACTION3' style="display: none"/>
+        <input type='button' class='bigbutton' id='action2Btn' value='ACTION2' style="display: none"/>
+        <input type='button' class='bigbutton' id='action1Btn' value='ACTION1' style="display: none"/>
+        <input type='button' class='bigbutton'  id='homeBtn' value='HOME' onclick='window.location="./"'/>
+      </td>
+    </tr>
+    </table>
+    <div id="workflow">
+  </div>
+</div>
+</body>
+</html>

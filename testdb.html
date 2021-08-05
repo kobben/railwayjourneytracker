@@ -1,0 +1,86 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+  <meta charset="UTF-8">
+  <title>testDB</title>
+  <link href="./css/style.css" rel="stylesheet" type="text/css"/>
+  <script src="./lib/postgrest-client.min.js"></script>
+  <script src="./js/DB.js"></script>
+
+  <script type="text/javascript">
+      const authToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoid2ViX2FjY2VzcyJ9.faLSEypbd-MDlb6r6zDG6iAdCKgthe6lHML3zEziVRw";
+      let resultBox;
+      let DEBUG;
+
+      function init() {
+          DB.init('http://localhost:3000', authToken);
+          resultBox = document.getElementById("resultBox");
+      }
+
+      async function getDB() {
+          resultBox.value = "GETting...";
+          let getUrl = document.getElementById("getUrl").value;
+          let resultJSON = await DB.query("GET",getUrl);
+          resultBox.value = JSON.stringify(resultJSON, null, 2);
+      }
+
+      async function postDB() {
+          resultBox.value = "POSTing...";
+          let postUrl = document.getElementById("postUrl").value;
+          let postObj = JSON.parse(document.getElementById("postObj").value);
+          let resultJSON = await DB.query("POST",postUrl,postObj);
+          resultBox.value = JSON.stringify(resultJSON, null, 2);
+      }
+
+      async function patchDB() {
+          resultBox.value = "PATCHing...";
+          let patchUrl = document.getElementById("patchUrl").value;
+          let patchObj = JSON.parse(document.getElementById("patchObj").value);
+          let resultJSON = await DB.query("PATCH",patchUrl,patchObj);
+          resultBox.value = JSON.stringify(resultJSON, null, 2);
+      }
+
+      async function deleteDB() {
+          resultBox.value = "DELETEing...";
+          let deleteUrl = document.getElementById("deleteUrl").value;
+          let resultJSON = await DB.query("DELETE",deleteUrl);
+          resultBox.value = JSON.stringify(resultJSON, null, 2);
+      }
+
+  </script>
+
+</head>
+
+<body onload="init()">
+
+<table>
+  <tr>
+    <td colspan="2"><textarea name="getUrl" id="getUrl" cols="100" rows="3" wrap="soft">/legs?select=id,name,stopfrom(id,name,geojson),stopto(id,name,geojson)&name=neq.test
+    </textarea></td>
+    <td><input class="bigbutton" type="button" id="getBtn" value="GET" onclick="getDB();"/></td>
+  </tr>
+  <tr>
+    <td><textarea name="postUrl" id="postUrl" cols="19" rows="3" wrap="soft">/stops</textarea></td>
+    <td><textarea name="postObj" id="postObj" cols="78" rows="3" wrap="soft">{ "id": 1234567, "name": "test", "geojson": {"type": "Point","coordinates": [6.6279598,52.5722717] } }</textarea>
+    </td>
+    <td><input class="bigbutton" type="button" id="postBtn" value="POST" onclick="postDB();"/></td>
+  </tr>
+  <tr>
+    <td><textarea name="patchUrl" id="patchUrl" cols="19" rows="3" wrap="soft">/legs?id=eq.9999999</textarea></td>
+    <td><textarea name="patchObj" id="patchObj" cols="78" rows="3" wrap="soft">{ "name": "test2" }</textarea>
+    </td>
+    <td><input class="bigbutton" type="button" id="patchBtn" value="PATCH" onclick="patchDB();"/></td>
+  </tr>
+  <tr>
+  <td  colspan="2"><textarea name="deleteUrl" id="deleteUrl" cols="100" rows="3" wrap="soft">/stops?name=eq.test</textarea></td>
+  </td>
+  <td><input class="bigbutton" type="button" id="deleteBtn" value="DELETE" onclick="deleteDB();"/></td>
+</tr>
+</table>
+
+<hr>
+<code style="font-size: 16px">RESULT:</span></code><br/>
+<code><textarea cols="100" rows="30" id="resultBox"></textarea></code>
+
+</body>
+</html>
