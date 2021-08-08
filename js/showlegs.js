@@ -1,7 +1,7 @@
 //Globals:
 let myMap, mapView;
 let legsMapData, stopsMapData;
-let allLegs;
+let theLegs, theWhereStr;
 
 
 /*-- Initialization function --*/
@@ -10,30 +10,20 @@ async function init() {
     const authToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoid2ViX2FjY2VzcyJ9.faLSEypbd-MDlb6r6zDG6iAdCKgthe6lHML3zEziVRw";
     if (DB.init('http://localhost:3000', authToken)) {
         SetMessage("Initializing show Legs...", workflowMsg);
-        // step 1:
-        initMap();
-        // step 2:
-        await loadLegsFromDB(''); // 'where' uses PostGREST syntax, eg. notes=ilike.*interrail*
-        console.log(allLegs);
-        // step 3: loads all Legs, because .selected was inited to be True for all
-        mapLegs(allLegs);
-        zoomToLegs();
-        let ZoomBtn = document.getElementById("action1Btn");
-        ZoomBtn.value = 'Zoom to selected';
-        ZoomBtn.style.display = "inline";
-        ZoomBtn.addEventListener("click", function () {
-            // zoom to legs where .selected = true
-            zoomToLegs();
-        });
-        let SelectBtn = document.getElementById("action2Btn");
-        SelectBtn.value = 'Filter selected';
-        SelectBtn.style.display = "inline";
-        SelectBtn.addEventListener("click", function () {
-            // show only legs where .selected = true => to re-select you have to reset the selection!
-            mapLegs(allLegs);
-            zoomToLegs();
-        });
-        SetMessage(allLegs.length + " Journey Legs found in DB. Click in map or table to alter selection...", workflowMsg);
+        // ** step 1:
+        let startAt = getParameterByName("start");
+        if (startAt) {
+            startAt = startAt.split(",");
+            initMap(startAt[0], startAt[1], startAt[2]); //loc from params
+        } else {
+            initMap(6.89, 52.22, 11); //Enschede
+        }
+        // ** step 2:
+        theWhereStr = '';
+        SetMessage("Search Legs...", workflowMsg);
+        let showIn = document.getElementById('workflow');
+        showIn.innerHTML = HTML.searchLegForm();
+        // ** wait for form to be submitted => step 3 = searchLegs() **//
     } else {
         SetMessage("Could not initialise DB connection.", errorMsg);
     }
@@ -47,8 +37,8 @@ async function init() {
 
 
 /*-- STEP 1: Initialise OSM map load legs and attached stops  -*/
-function initMap() {
-    const startLocation = [6.79, 52.26]; // Hengelo in lon, lat
+function initMap(startlon,startlat,startzoom) {
+    const startLocation = []; startLocation[0] = startlon; startLocation[1] = startlat;
     //define map object & link to placeholder div:
     myMap = new ol.Map({target: "mapDiv"});
 
@@ -130,11 +120,10 @@ function initMap() {
 
 // create a map view:
     mapView = new ol.View({
-        //center coords and zoom level:
         center: ol.proj.transform(startLocation, 'EPSG:4326', 'EPSG:3857'),
         minZoom: 2,
         maxZoom: 19,
-        zoom: 11,
+        zoom: startzoom,
     });
     myMap.setView(mapView);
 
@@ -163,36 +152,64 @@ function initMap() {
 /*-- End of STEP 1  -*/
 
 
-/*-- STEP 2: load legs from DB  -*/
+
+/*-- STEP 3: Load Legs & show them  -*/
+async function searchLegs(theWhereStr) {
+    await loadLegsFromDB(theWhereStr); // 'where' uses PostGREST syntax, eg. notes=ilike.*interrail*
+// console.log(theLegs);
+// loads all Legs found in DB, because .selected was inited to be True for all
+    mapLegs(theLegs);
+    zoomToLegs();
+    let ZoomBtn = document.getElementById("action1Btn");
+    ZoomBtn.value = 'Zoom to selected';
+    ZoomBtn.style.display = "inline";
+    ZoomBtn.addEventListener("click", function () {
+        // zoom to legs where .selected = true
+        zoomToLegs();
+    });
+    let SelectBtn = document.getElementById("action2Btn");
+    SelectBtn.value = 'Filter selected';
+    SelectBtn.style.display = "inline";
+    SelectBtn.addEventListener("click", function () {
+        // show only legs where .selected = true => to re-select you have to reset the selection!
+        mapLegs(theLegs);
+        zoomToLegs();
+    });
+}
+/*-- End of STEP 3  -*/
+
 // returns them as an array of objects of class Leg (see Models.js)
 async function loadLegsFromDB(where) {
-    allLegs = [];
+    theLegs = [];
+    let newLeg = undefined;
     let postUrl = '/legs?' ;
     postUrl += 'select=id,name,startdatetime,enddatetime,notes,stopfrom(id,name,geojson),stopto(id,name,geojson),osmrelationid,osmrelationname,geojson';
     postUrl += '&order=startdatetime.desc.nullslast&' + where;
     // console.log(postUrl);
-    let resultJSON = await DB.query("GET", postUrl);
+    let resultJSON = undefined;
+    resultJSON = await DB.query("GET", postUrl);
     if (resultJSON.error === true) {
         DB.giveErrorMsg(resultJSON);
     } else {
         for (let legfound of resultJSON.data) {
-            let loadedLeg = new Leg(legfound.id, legfound.name, undefined, legfound.stopfrom, legfound.stopto, legfound.osmrelationid, legfound.osmrelationname, legfound.startdatetime, legfound.enddatetime, legfound.notes);
             if (legfound.geojson === null || legfound.geojson === undefined) {
                 SetMessage('Skipped Leg object without valid geojson: ' + legfound.id, workflowMsg);
             } else {
-                loadedLeg.selected = true;
-                loadedLeg.geometry = legfound.geojson;
-                loadedLeg.bbox = calcBbox(legfound.geojson.coordinates);
-                allLegs.push(loadedLeg);
+                newLeg = new Leg(legfound.id, legfound.name, undefined, legfound.stopfrom, legfound.stopto,
+                    legfound.osmrelationid, legfound.osmrelationname, legfound.startdatetime, legfound.enddatetime, legfound.notes);
+                newLeg.selected = true;
+                newLeg.geometry = legfound.geojson;
+                newLeg.bbox = calcBbox(legfound.geojson.coordinates);
+                theLegs.push(newLeg);
+                newLeg = undefined;
             }
         }
-        loadedLeg = null;
+        SetMessage(theLegs.length + " Journey Legs found in DB. Click in map or table to alter selection...", workflowMsg);
     }
 }
-/*-- End of STEP 2  -*/
 
 
-/*-- STEP 2: show legs on Map  -*/
+/*-- STEP 4: show legs on Map  -*/
 function mapLegs(Legs) {
     stopsMapData.clear();
     legsMapData.clear();
@@ -205,10 +222,9 @@ function mapLegs(Legs) {
                showFeatureOnMap(aStopTo.toOlFeature(), stopsMapData);
            }
     }
-    displayInTable(Legs, "workflow"); //and do step 4 for all found.
+    displayInTable(Legs, "workflow"); //and do step 5 for all found.
 }
-
-/*-- End of STEP 3  -*/
+/*-- End of STEP 4  -*/
 
 /*--   -*/
 function toggleClickedFeatures(ids) {
@@ -230,9 +246,9 @@ function displayInTable(Legs, htmlElem) {
     let html = '<table><tr><th>ID</th><th>Name</th><th>From</th><th>To</th><th>Start</th><th>End</th><th>Notes</th>';
     html += '<th>Selected</th><th><input type="button" onclick="selectAll()" value="All"/></th>' +
         '<th><input type="button" onclick="selectNone()"  value="None"/></th></tr>';
-    for (let aLeg of allLegs) {
+    for (let aLeg of theLegs) {
             if (aLeg.selected) {
-                html += TMPL.showLegRow(aLeg);
+                html += HTML.showLegRow(aLeg);
             }
     }
     html += '<tr><th colspan="10"></th></tr></table>';
@@ -240,7 +256,7 @@ function displayInTable(Legs, htmlElem) {
 }
 
 function selectAll() {
-    for (let aLeg of allLegs) {
+    for (let aLeg of theLegs) {
         let isRowInTable = document.getElementById("select_" + aLeg.id);
         if (isRowInTable) {
             aLeg.selected = true;
@@ -249,7 +265,7 @@ function selectAll() {
     }
 }
 function selectNone() {
-    for (let aLeg of allLegs) {
+    for (let aLeg of theLegs) {
         let isRowInTable = document.getElementById("select_" + aLeg.id);
         if (isRowInTable) {
             aLeg.selected = false;
@@ -260,7 +276,7 @@ function selectNone() {
 }
 
 function toggleSelect(ID) {
-    for (let aLeg of allLegs) {
+    for (let aLeg of theLegs) {
         if (aLeg.id === ID) {
             if (aLeg.selected) {
                 aLeg.selected = false;
@@ -279,7 +295,7 @@ function zoomToLegs() {
     let minlon = 180;
     let maxlat = -90;
     let maxlon = -180;
-    for (let aLeg of allLegs) {
+    for (let aLeg of theLegs) {
         if (aLeg.bbox) {
             if (aLeg.selected) {
                 bboxChanged = true;
@@ -296,13 +312,101 @@ function zoomToLegs() {
     if (bboxChanged) zoomMapToBbox([minlat, minlon, maxlat, maxlon]) ;
 }
 
-
 /*-- Edit selected Leg  -*/
-function editLeg(ID) {
-    alert('Not implemented yet....');
+function editLeg(ID,htmlElem) {
+    for (let aLeg of theLegs) {
+        if (aLeg.id === ID) {
+            document.getElementById("action1Btn").style.display = "none";
+            document.getElementById("action2Btn").style.display = "none";
+            SetMessage("Edit properties and save...", workflowMsg);
+            let showIn = document.getElementById(htmlElem);
+            const html = HTML.editLegForm(aLeg);
+            showIn.innerHTML = html;
+            let SaveBtn = document.getElementById("action3Btn");
+            SaveBtn.value = 'SAVE CHANGES';
+            SaveBtn.style.display = "inline";
+            // console.log(aLeg);
+            SaveBtn.addEventListener("click", function () {
+                aLeg.startDateTime = document.getElementById("leg_startdatetime").value;
+                aLeg.endDateTime = document.getElementById("leg_enddatetime").value;
+                aLeg.name = escapeStr(document.getElementById("leg_name").value);
+                aLeg.notes = escapeStr(document.getElementById("leg_notes").value);
+                if (DB.patchLeg(aLeg, ID)) {
+                    // await loadLegsFromDB(theWhereStr);
+                    mapLegs(theLegs);
+                    zoomToLegs();
+                    document.getElementById("action1Btn").style.display = "inline";
+                    document.getElementById("action2Btn").style.display = "inline";
+                    document.getElementById("action3Btn").style.display = "none";
+                    SetMessage("Edited Leg. Click in map or table to alter selection...", workflowMsg);
+                }
+            });
+        }
+    }
 }
 
 /*-- Delete selected Leg  -*/
-function delLeg(ID) {
-    alert('Not implemented yet....');
+async function delLeg(ID) {
+    const theStr = `Are you REALLY sure you want to delete this Leg [id=${ID}]?\nThis action can NOT be undone!`;
+    if ( confirm(theStr) ) {
+       if (await DB.deleteLeg(ID)) {
+           for (let i=0;i<theLegs.length;i++) {
+               theLegs[i].selected = true;
+               if (theLegs[i].id === ID) {
+                   theLegs.splice(i, 1);
+               }
+           }
+           SetMessage("Deleted Leg. Now " +theLegs.length
+               + " Journey Legs available. Click in map or table to alter selection...", workflowMsg);
+           await loadLegsFromDB(theWhereStr);
+           mapLegs(theLegs);
+           zoomToLegs();
+       }
+    }
+}
+
+
+//+++++++++++++++++++++++++++++++++++++++++++++++++++
+function changeWhere() {
+//+++++++++++++++++++++++++++++++++++++++++++++++++++
+    theWhereStr = "";
+    let theAddDatesStr = "";
+    let theAndOr = document.getElementById("and_or").value;
+    const allColNames = ["id","name","stopfrom","stopto","notes","startdatetime","enddatetime"];
+    for (let theColName of allColNames) {
+        let theCol = document.getElementById("col_"+theColName).value;
+        let theOp = document.getElementById("op_"+theColName).value;
+        if (theCol !== "") {
+            if (theOp === "equals") {
+                theWhereStr += theColName + ".ilike." +  theCol + ",";
+            } else if (theOp === "contains") {
+                theWhereStr += theColName + ".ilike.*" +  theCol + "*,";
+            } else if (theOp === "beginswith") {
+                theWhereStr += theColName + ".ilike." +  theCol + "*,";
+            } else if (theOp === "endswith") {
+                theWhereStr += theColName + ".ilike.*" +  theCol + ",";
+            } else if (theOp === "=") {
+                theWhereStr += theColName + ".eq." +  theCol + ",";
+            } else if (theOp === "<") {
+                theWhereStr += theColName + ".lt." +  theCol + ",";
+            } else if (theOp === ">") {
+                theWhereStr += theColName + ".gt." +  theCol + ",";
+            } else if (theOp === "<>") {
+                theWhereStr += theColName + ".neq." +  theCol + ",";
+            } else if (theOp === "on") {
+                theWhereStr += theColName + ".eq." +  theCol + ",";
+            } else if (theOp === "before") {
+                theWhereStr += theColName + ".lt." +  theCol + ",";
+            } else if (theOp === "after") {
+                theWhereStr += theColName + ".gt." +  theCol + ",";
+            } else {
+                SetMessage("Unknown Operator in function changeWhere()...!", errorMsg);
+            }
+        }
+    }
+    if (theWhereStr !== '') {
+        theWhereStr = theAndOr + "=(" + theWhereStr;
+        theWhereStr = theWhereStr.substring(0,theWhereStr.length-1); // remove , from last one...
+        theWhereStr += ")";
+    }
 }

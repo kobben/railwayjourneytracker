@@ -58,8 +58,6 @@ class Stop {
         };
         this.toGeoJSON = function () {
             // full geoJSON feature, including attributes
-            // let coordsStr = JSON.stringify(this.geometry.coordinates);
-            // let jsonStr = `{"type": "Feature","geometry": {"type": "Point","coordinates": ${coordsStr} },"properties": {"id": "${this.id}","name": "${this.name}"} }`;
             let jsonObj = {
                 type: "Feature",
                 geometry: this.geometry,
@@ -101,8 +99,6 @@ class Leg { // a leg of a trip: one train from boarding stop to disembarking sto
         };
         this.toGeoJSON = function () {
             // creates full geoJSON feature, including attributes
-            // let coordsStr = JSON.stringify(this.geometry.coordinates);
-            // return `{"type": "Feature","geometry": {"type": "Linestring","coordinates": ${coordsStr} }, "properties": {"id": "${this.id}","name": "${this.name}"} }`;
             let jsonObj = {
                 type: "Feature",
                 geometry: this.geometry,

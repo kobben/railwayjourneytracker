@@ -8,7 +8,7 @@
  * see http://creativecommons.org/licenses/by-nc-sa/3.0/
  *
  * @author Barend Kobben - b.j.kobben@utwente.nl
- * @version 1.0 [April 2021]
+ * @version 1.1 [Aug 2021]
  *
  */
 
@@ -39,17 +39,22 @@ DB = {
         SetMessage("ERROR in DB module:" + errStr, errorMsg);
     }
     ,
-    checkIfNew: async function (table,id) {
+    addStopIfNew: async function (theStop) {
         let postUrl = undefined;
-        postUrl = '/' + table + '?select=count()&id=eq.' + parseInt(id);
+        postUrl = '/stops' + '?select=count()&id=eq.' + parseInt(theStop.id);
         let resultJSON = await this.query("GET", postUrl);
         if (resultJSON.error === true) {
             this.giveErrorMsg(resultJSON);
             return false;
         } else {
             if (resultJSON.data[0].count === 0) {
-                return true;
+                let stopAdded = await DB.addStop(theStop.id, theStop.name, theStop.geometry);
+                if (stopAdded) {
+                    SetMessage("Created stop " + theStop.name + " [" + theStop.id + "]", workflowMsg);
+                    return true;
+                }
             } else {
+                SetMessage("Used exisiting stop " + theStop.name + " [" + theStop.id + "]", workflowMsg);
                 return false;
             }
         }
@@ -76,8 +81,23 @@ DB = {
         }
     }
     ,
+    deleteLeg: async function (ID) {
+        try {
+            let postUrl = '/legs?id=eq.' + ID;
+            let resultJSON = await this.query("DELETE", postUrl);
+            if (resultJSON.error === true) {
+                this.giveErrorMsg(resultJSON);
+                return false;
+            } else {
+                return true;
+            }
+        } catch (e) {
+            SetMessage("ERROR in delLeg function in DB module:\n " + e, errorMsg);
+        }
+    }
+    ,
     addLeg: async function (theLeg) {
-        let postObjStr;
+        let postObjStr = ''; let postObj = undefined;
         try {
             let postUrl = '/legs';
             let geojsonStr = JSON.stringify(theLeg.geometry, null, 0);
@@ -94,6 +114,28 @@ DB = {
             SetMessage("ERROR in Addleg function in DB module:\n " + e, errorMsg);
             // console.log(theLeg.geometry);
             // console.log(postObjStr);
+        }
+    }
+    ,
+    patchLeg: async function (theLeg, ID) {
+        let postObjStr;
+        try {
+            let whereStr = '?id=eq.' + ID;
+            let postUrl = '/legs' + whereStr;
+            let geojsonStr = JSON.stringify(theLeg.geometry, null, 0);
+            postObjStr = `{ "name": "${theLeg.name}", "notes": "${theLeg.notes}", "startdatetime": "${theLeg.startDateTime}", "enddatetime": "${theLeg.endDateTime}", "stopfrom": ${theLeg.stopFrom.id}, "stopto": ${theLeg.stopTo.id}, "osmrelationid": ${theLeg.OSMrelationID}, "osmrelationname": "${theLeg.OSMrelationName}", "geojson": ${geojsonStr} }`;
+            let postObj = JSON.parse(postObjStr);
+            let resultJSON = await this.query("PATCH", postUrl, postObj);
+            if (resultJSON.error === true) {
+                this.giveErrorMsg(resultJSON);
+                console.log(postObjStr);
+                return false;
+            } else {
+                return true;
+            }
+        } catch (e) {
+            SetMessage("ERROR in Addleg function in DB module:\n " + e, errorMsg);
+            console.log(postObjStr);
         }
     }
     ,

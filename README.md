@@ -18,3 +18,5 @@ SPDX-License-Identifier: GPL-3.0-only
 
 #### Changelist:
     v0.1 Aug 2021 - first published version
+    v0.2 Aug 2021 - removed various bugs. 
+                    Added SearchLegs functionality

@@ -9,7 +9,15 @@ function init() {
     const authToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoid2ViX2FjY2VzcyJ9.faLSEypbd-MDlb6r6zDG6iAdCKgthe6lHML3zEziVRw";
     if (DB.init('http://localhost:3000', authToken)) {
         SetMessage("Initializing leg construction...", workflowMsg);
-        initMap();
+        let startAt = getParameterByName("start");
+        if (startAt) {
+            startAt = startAt.split(",");
+            initMap(startAt[0], startAt[1], startAt[2]); //loc from params
+        } else {
+            initMap(6.89, 52.22, 11); //Enschede
+        }
+
+        DEBUG = mapView;
         SetMessage("Start by selecting an OSM relation in the map...", workflowMsg);
         // step 1 done, waiting for mapclick to trigger step 2...
     } else {
@@ -56,8 +64,8 @@ async function getOSMandDoNextstep(query, outType, nextStepFunction, showIn) {
 
 
 /*-- STEP 1: Initialise OSM map and wait for mapClick to choose OSMRelation  -*/
-function initMap() {
-    const startLocation = [6.58, 52.44]; // Daarlerveen in lon, lat
+function initMap(startlon,startlat,startZoom) {
+    const startLocation = []; startLocation[0] = startlon; startLocation[1] = startlat;
     //define map object & link to placeholder div:
     myMap = new ol.Map({target: "mapDiv"});
 
@@ -143,7 +151,7 @@ function initMap() {
         center: ol.proj.transform(startLocation, 'EPSG:4326', 'EPSG:3857'),
         minZoom: 2,
         maxZoom: 19,
-        zoom: 11,
+        zoom: startZoom,
     });
     myMap.setView(mapView);
 
@@ -350,16 +358,18 @@ function showStops(json, htmlElem) {
     //Create START and END rows, and draw the OSMstops on the map:
     for (let stop of myOSMrelation.stops) {
         //create table rows:
-        toStopsHtml += "<tr class='selector' id=" + "from_" + stop.id + ">";
-        fromStopsHtml += "<tr class='selector' id=" + "to_" + stop.id + ">";
-        toStopsHtml += "<td>" + stop.id + "</td>"; fromStopsHtml += "<td>" + stop.id + "</td>";
-        toStopsHtml += "<td>" + stop.name + "</td>"; fromStopsHtml += "<td>" + stop.name + "</td>";
-        toStopsHtml += "</tr>"; fromStopsHtml += "</tr>";
+        fromStopsHtml += "<tr class='selector' id=" + "from_" + stop.id + ">";
+        toStopsHtml += "<tr class='selector' id=" + "to_" + stop.id + ">";
+        fromStopsHtml += "<td>" + stop.id + "</td>";
+        toStopsHtml += "<td>" + stop.id + "</td>";
+        fromStopsHtml += "<td>" + stop.name + "</td>";
+        toStopsHtml += "<td>" + stop.name + "</td>";
+        fromStopsHtml += "</tr>";
+        toStopsHtml += "</tr>";
         // draw it in the map:
         showFeatureOnMap(stop.toOlFeature(), stopsMapData);
     }
-    const html = TMPL.showStopsTable(fromStopsHtml, toStopsHtml);
-    showIn.innerHTML = html;
+    showIn.innerHTML = HTML.showStopsTable(fromStopsHtml, toStopsHtml);
 
     // create onclick events for rows:
     let ConstructBtn = document.getElementById("action1Btn");
@@ -480,7 +490,7 @@ function showSaveLegForm(theLeg, htmlElem) {
     const tmpGEOJSON = JSON.stringify(theLeg.geometry);
 
     /*-- Submit of this Form will trigger STEP 8  -*/
-    const html = TMPL.saveLegForm(theLeg);
+    const html = HTML.saveLegForm(theLeg);
     showIn.innerHTML = html;
     let SaveBtn = document.getElementById("action3Btn");
     SaveBtn.value = 'SAVE LEG IN DB';
@@ -505,26 +515,12 @@ function showSaveLegForm(theLeg, htmlElem) {
 
 async function saveLeg(theLeg) {
 
-    let fromStopIsNew = await DB.checkIfNew('stops', theLeg.stopFrom.id);
-    if (fromStopIsNew) {
-        let stopAdded = await DB.addStop(theLeg.stopFrom.id, theLeg.stopFrom.name, theLeg.stopFrom.geometry);
-        if (stopAdded) {SetMessage("Created stop " + theLeg.stopFrom.name + " [" + theLeg.stopFrom.id + "]", workflowMsg);}
-    } else {
-        SetMessage("Used exisiting stop " + theLeg.stopFrom.name + " [" + theLeg.stopFrom.id + "]", workflowMsg);
-    }
-
-    let toStopIsNew = await DB.checkIfNew('stops', theLeg.stopTo.id);
-    if (toStopIsNew) {
-        let stopAdded = await DB.addStop(theLeg.stopTo.id, theLeg.stopTo.name, theLeg.stopTo.geometry);
-        if (stopAdded) {SetMessage("Created stop " + theLeg.stopTo.name + " [" + theLeg.stopTo.id + "]", workflowMsg);}
-    } else {
-        SetMessage("Used exisiting stop " + theLeg.stopTo.name + " [" + theLeg.stopTo.id + "]", workflowMsg);
-    }
-
+    let fromStopIsNew = await DB.addStopIfNew(theLeg.stopFrom);
+    let toStopIsNew = await DB.addStopIfNew(theLeg.stopTo);
     let legAdded = await DB.addLeg(theLeg);
     if (legAdded) {
         SetMessage("Saved Leg in DB.", workflowMsg);
-        SetMessage("####### workflow finished ###########", workflowMsg);
+        SetMessage("### Leg construction finished ###", workflowMsg);
         document.getElementById("workflow").innerHTML = '';
         document.getElementById("action3Btn").style.display = "none";
         document.getElementById("action2Btn").style.display = "none";
@@ -532,10 +528,10 @@ async function saveLeg(theLeg) {
         stopsMapData.clear();
         legsMapData.clear();
         //** ...and we go back to the end of step 1, waiting for a click in the map....
-        SetMessage("Start by selecting an OSM relation in the map...", workflowMsg);
+        const curCenter = ol.proj.transform(mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
+        const curZoom = mapView.getZoom();
+        window.location="./constructLeg.html?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom;
     }
-
-
 }
 /*-- End of STEP 8  -*/
 

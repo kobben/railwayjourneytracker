@@ -309,6 +309,14 @@ function merc2osm(coord) {
 /*-- Various Utility Functions  -*/
 /*-- **************************** -*/
 
+
+function getParameterByName(name) {
+    name = name.replace(/[\[]/, "\\[").replace(/[\]]/, "\\]");
+    var regex = new RegExp("[\\?&]" + name + "=([^&#]*)"),
+        results = regex.exec(location.search);
+    return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
+
 // to escape quotes, tabs, newlines in strings and text fields to be able to be JSON.parsed
 function escapeStr(theStr) {
     let re = /'/g;
@@ -320,6 +328,8 @@ function escapeStr(theStr) {
     return theStr;
 }
 
+
+
 //reset action Btns:
 function resetActionBtns() {
     for (i = 1; i <= 3; i++) {
@@ -329,5 +339,4 @@ function resetActionBtns() {
     }
 }
 
-
-/*-- END of Calculation functions -*/
+/*-- END of utility functions -*/
