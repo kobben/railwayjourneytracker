@@ -8,7 +8,6 @@
  * see http://creativecommons.org/licenses/by-nc-sa/3.0/
  *
  * @author Barend Kobben - b.j.kobben@utwente.nl
- * @version 1.1 [Aug 2021]
  *
  */
 
@@ -36,7 +35,7 @@ DB = {
         if (resultJSON.data.details != null) errStr += "\n" + resultJSON.data.details;
         if (resultJSON.data.hint != null) errStr += "\n" + resultJSON.data.hint;
         if (errStr === undefined) errStr = "\n" + resultJSON.data;
-        SetMessage("ERROR in DB module:" + errStr, errorMsg);
+        UI.SetMessage("ERROR in DB module:" + errStr, errorMsg);
     }
     ,
     addStopIfNew: async function (theStop) {
@@ -50,11 +49,11 @@ DB = {
             if (resultJSON.data[0].count === 0) {
                 let stopAdded = await DB.addStop(theStop.id, theStop.name, theStop.geometry);
                 if (stopAdded) {
-                    SetMessage("Created stop " + theStop.name + " [" + theStop.id + "]", workflowMsg);
+                    UI.SetMessage("Created stop " + theStop.name + " [" + theStop.id + "]", workflowMsg);
                     return true;
                 }
             } else {
-                SetMessage("Used exisiting stop " + theStop.name + " [" + theStop.id + "]", workflowMsg);
+                UI.SetMessage("Used exisiting stop " + theStop.name + " [" + theStop.id + "]", workflowMsg);
                 return false;
             }
         }
@@ -75,7 +74,7 @@ DB = {
                 return true;
             }
         } catch (e) {
-            SetMessage("ERROR in AddStop function in DB module:\n " + e, errorMsg);
+            UI.SetMessage("ERROR in AddStop function in DB module:\n " + e, errorMsg);
             // console.log(geojsonStr);
             // console.log(postObjStr);
         }
@@ -92,7 +91,22 @@ DB = {
                 return true;
             }
         } catch (e) {
-            SetMessage("ERROR in delLeg function in DB module:\n " + e, errorMsg);
+            UI.SetMessage("ERROR in deleteLeg function in DB module:\n " + e, errorMsg);
+        }
+    }
+    ,
+    deleteStop: async function (ID) {
+        try {
+            let postUrl = '/stops?id=eq.' + ID;
+            let resultJSON = await this.query("DELETE", postUrl);
+            if (resultJSON.error === true) {
+                this.giveErrorMsg(resultJSON);
+                return false;
+            } else {
+                return true;
+            }
+        } catch (e) {
+            UI.SetMessage("ERROR in delStop function in DB module:\n " + e, errorMsg);
         }
     }
     ,
@@ -101,8 +115,16 @@ DB = {
         try {
             let postUrl = '/legs';
             let geojsonStr = JSON.stringify(theLeg.geometry, null, 0);
-            postObjStr = `{ "name": "${theLeg.name}", "notes": "${theLeg.notes}", "startdatetime": "${theLeg.startDateTime}", "enddatetime": "${theLeg.endDateTime}", "stopfrom": ${theLeg.stopFrom.id}, "stopto": ${theLeg.stopTo.id}, "osmrelationid": ${theLeg.OSMrelationID}, "osmrelationname": "${theLeg.OSMrelationName}", "geojson": ${geojsonStr} }`;
+            postObjStr = `{ "name": "${theLeg.name}", "notes": "${theLeg.notes}", "type": "${theLeg.type}", "startdatetime": "${theLeg.startDateTime}", "enddatetime": "${theLeg.endDateTime}", "stopfrom": ${theLeg.stopFrom.id}, "stopto": ${theLeg.stopTo.id}, "geojson": ${geojsonStr} }`;
             let postObj = JSON.parse(postObjStr);
+            if (theLeg.startDateTime === '') {
+                postObj.startdatetime = null;
+            }
+            if (theLeg.endDateTime === '') {
+                postObj.enddatetime = null;
+            }
+            // console.log(postObjStr);
+            // console.log(postObj);
             let resultJSON = await this.query("POST", postUrl, postObj);
             if (resultJSON.error === true) {
                 this.giveErrorMsg(resultJSON);
@@ -111,9 +133,7 @@ DB = {
                 return true;
             }
         } catch (e) {
-            SetMessage("ERROR in Addleg function in DB module:\n " + e, errorMsg);
-            // console.log(theLeg.geometry);
-            // console.log(postObjStr);
+            UI.SetMessage("ERROR in Addleg function in DB module:\n " + e, errorMsg);
         }
     }
     ,
@@ -123,7 +143,35 @@ DB = {
             let whereStr = '?id=eq.' + ID;
             let postUrl = '/legs' + whereStr;
             let geojsonStr = JSON.stringify(theLeg.geometry, null, 0);
-            postObjStr = `{ "name": "${theLeg.name}", "notes": "${theLeg.notes}", "startdatetime": "${theLeg.startDateTime}", "enddatetime": "${theLeg.endDateTime}", "stopfrom": ${theLeg.stopFrom.id}, "stopto": ${theLeg.stopTo.id}, "osmrelationid": ${theLeg.OSMrelationID}, "osmrelationname": "${theLeg.OSMrelationName}", "geojson": ${geojsonStr} }`;
+            postObjStr = `{ "name": "${theLeg.name}", "notes": "${theLeg.notes}", "type": "${theLeg.type}", "startdatetime": "${theLeg.startDateTime}", "enddatetime": "${theLeg.endDateTime}", "stopfrom": ${theLeg.stopFrom.id}, "stopto": ${theLeg.stopTo.id}, "geojson": ${geojsonStr} }`;
+            let postObj = JSON.parse(postObjStr);
+            if (theLeg.startDateTime === '') {
+                postObj.startdatetime = null;
+            }
+            if (theLeg.endDateTime === '') {
+                postObj.enddatetime = null;
+            }
+            let resultJSON = await this.query("PATCH", postUrl, postObj);
+            if (resultJSON.error === true) {
+                this.giveErrorMsg(resultJSON);
+                console.log(postObjStr);
+                return false;
+            } else {
+                return true;
+            }
+        } catch (e) {
+            UI.SetMessage("ERROR in patchleg function in DB module:\n " + e, errorMsg);
+            console.log(postObjStr);
+        }
+    }
+    ,
+    patchStop: async function (theStop, ID) {
+        let postObjStr;
+        try {
+            let whereStr = '?id=eq.' + ID;
+            let postUrl = '/stops' + whereStr;
+            let geojsonStr = JSON.stringify(theStop.geometry, null, 0);
+            postObjStr = `{ "name": "${theStop.name}", "geojson": ${geojsonStr} }`;
             let postObj = JSON.parse(postObjStr);
             let resultJSON = await this.query("PATCH", postUrl, postObj);
             if (resultJSON.error === true) {
@@ -134,7 +182,7 @@ DB = {
                 return true;
             }
         } catch (e) {
-            SetMessage("ERROR in Addleg function in DB module:\n " + e, errorMsg);
+            UI.SetMessage("ERROR in patchStop function in DB module:\n " + e, errorMsg);
             console.log(postObjStr);
         }
     }

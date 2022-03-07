@@ -1,10 +1,9 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Cache-control" content="no-cache">
     <meta http-equiv="Cache-control" content="no-store">
-    <title>Construct Leg</title>
+    <title>Create Leg Manually</title>
 
     <!--  //load OpenLayers libs-->
     <script src="lib/ol.js"></script>
@@ -14,21 +13,19 @@
 
     <!--  load app styles and javascript-->
     <link href="css/style.css" rel="stylesheet">
-
     <script src="lib/postgrest-client.min.js"></script>
     <script src="./lib/turf.min.js"></script>
     <script src="./lib/jsts.min.js"></script>
-
     <script src="js/DB.js"></script>
     <script src="js/UI.js"></script>
-    <script src="js/Models.js"></script>
     <script src="js/Functions.js"></script>
+    <script src="js/Models.js"></script>
     <script src="js/HTML.js"></script>
 
-    <script src="js/constructleg.js"></script>
+    <script src="js/createLegManually.js"></script>
 
 </head>
-<body onload="initConstructLegs();">
+<body onload="initCreateLegManually();">
 <div id="flexwrapper">
     <div id="mapDiv"></div>
     <div id="menuDiv">
@@ -37,6 +34,7 @@
                 <td id="wfmsg">OSMrailways</td>
                 <td id="UI_workflow">
                     <span id="UI_Buttons">
+                    <input type='button' class='bigbutton' id='action6Btn' value='ACTION6' style="display: none"/>
                     <input type='button' class='bigbutton' id='action5Btn' value='ACTION5' style="display: none"/>
                     <input type='button' class='bigbutton' id='action4Btn' value='ACTION4' style="display: none"/>
                     <input type='button' class='bigbutton' id='action3Btn' value='ACTION3' style="display: none"/>

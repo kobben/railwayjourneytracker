@@ -1,10 +1,9 @@
-<!DOCTYPE html>
 <html lang="en">
 <head>
     <meta charset="UTF-8">
     <meta http-equiv="Cache-control" content="no-cache">
     <meta http-equiv="Cache-control" content="no-store">
-    <title>Construct Leg</title>
+    <title>Show Stops</title>
 
     <!--  //load OpenLayers libs-->
     <script src="lib/ol.js"></script>
@@ -14,21 +13,17 @@
 
     <!--  load app styles and javascript-->
     <link href="css/style.css" rel="stylesheet">
-
     <script src="lib/postgrest-client.min.js"></script>
-    <script src="./lib/turf.min.js"></script>
-    <script src="./lib/jsts.min.js"></script>
-
     <script src="js/DB.js"></script>
     <script src="js/UI.js"></script>
-    <script src="js/Models.js"></script>
     <script src="js/Functions.js"></script>
+    <script src="js/Models.js"></script>
     <script src="js/HTML.js"></script>
 
-    <script src="js/constructleg.js"></script>
+    <script src="js/showstops.js"></script>
 
 </head>
-<body onload="initConstructLegs();">
+<body onload="initShowStops();">
 <div id="flexwrapper">
     <div id="mapDiv"></div>
     <div id="menuDiv">
@@ -43,7 +38,7 @@
                     <input type='button' class='bigbutton' id='action2Btn' value='ACTION2' style="display: none"/>
                     <input type='button' class='bigbutton' id='action1Btn' value='ACTION1' style="display: none"/>
                     </span>
-                    <input type='button' class='bigbutton' id='homeBtn' value='≡' onclick='window.location="./"'/>
+                    <input type='button' className='bigbutton' id='homeBtn' value='≡' onClick='window.location="./"'/>
                 </td>
             </tr>
         </table>

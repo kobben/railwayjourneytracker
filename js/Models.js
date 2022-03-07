@@ -48,12 +48,14 @@ class Stop {
             type: "Point",
             coordinates: coords,
         };
+        this.selected = false; // selector boolean used later in mapping and other selections
         this.toOlFeature = function () {
             // full OpenLayers Feature in GMercator
             return new ol.Feature({
                 geometry: new ol.geom.Point(this.geometry.coordinates).transform('EPSG:4326', 'EPSG:3857'),
                 id: this.id,
                 name: this.name,
+                selected: this.selected
             });
         };
         this.toGeoJSON = function () {
@@ -63,7 +65,7 @@ class Stop {
                 geometry: this.geometry,
                 properties: {
                     id: this.id,
-                    name: this.name
+                    name: this.name,
                 }
             }
             return jsonObj;
@@ -72,11 +74,10 @@ class Stop {
 }
 
 class Leg { // a leg of a trip: one train from boarding stop to disembarking stop
-    constructor(id, name, coords, stopFrom, stopTo, OSMrelationID, OSMrelationName,
-                 startDateTime, endDateTime, notes) {
+    constructor(id, name, coords, stopFrom, stopTo, startDateTime, endDateTime, notes, type) {
         this.id = id;
         this.name = name;// name given by user
-        this.selected = true; // selector boolean used later in mapping and other selections
+        this.selected = false; // selector boolean used later in mapping and other selections
         this.geometry = { // simple GeoJSON Linestring geometry [[lon,lat],[lon,lat],...]
             type: "LineString",
             coordinates: coords,
@@ -84,17 +85,18 @@ class Leg { // a leg of a trip: one train from boarding stop to disembarking sto
         this.bbox = [-90,-180,90,180]; // [minlat, minlon, maxlat, maxlon]; needs to be calculated from geom:
         this.stopFrom = stopFrom;
         this.stopTo = stopTo;
-        this.OSMrelationID = OSMrelationID; // = OSMid of OSMrelation this was extracted from
-        this.OSMrelationName = OSMrelationName; // = name of OSMrelation this was extracted from
         this.startDateTime = startDateTime;
         this.endDateTime = endDateTime;
         this.notes = notes; // given by user
+        this.type = type; // default = 0 = train
         this.toOlFeature = function () {
             // full OpenLayers Feature in GMercator
             return new ol.Feature({
                 geometry: new ol.geom.LineString(this.geometry.coordinates).transform('EPSG:4326', 'EPSG:3857'),
                 id: this.id,
                 name: this.name,
+                type: this.type,
+                selected: this.selected,
             });
         };
         this.toGeoJSON = function () {
@@ -108,8 +110,7 @@ class Leg { // a leg of a trip: one train from boarding stop to disembarking sto
                     startdatetime: this.startDateTime,
                     enddatetime: this.endDateTime,
                     notes: this.notes,
-                    osmrelationid: this.OSMrelationID,
-                    osmrelationname: this.OSMrelationName,
+                    type : this.type,
                     stopfrom: this.stopFrom.id,
                     stopto: this.stopTo.id
                 }
@@ -120,12 +121,13 @@ class Leg { // a leg of a trip: one train from boarding stop to disembarking sto
 }
 
 class Trip {
-    constructor(id, name, notes, startDateTime, endDateTime, legs) {
+    constructor(id, name, notes, type, startDateTime, endDateTime, legs) {
         this.id = id;
         this.name = name;
         this.type = undetermined;
         this.selected = true; // selector boolean used later in mapping and other selections
         this.notes = notes;
+        this.type = type; // default = 0 = ?
         this.startDateTime = startDateTime;
         this.endDateTime = endDateTime;
         this.legs = []; // a list of Leg object IDs

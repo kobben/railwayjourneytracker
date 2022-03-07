@@ -13,7 +13,7 @@
 }
 
 /* ------------------------------ */
-/* STYLES BELONGING TO Messages.js   */
+/* STYLES BELONGING TO UI.js   */
 /* ------------------------------ */
 .tooltip {
 	position: absolute;
@@ -32,7 +32,25 @@
 	margin-bottom: 3px;
 }
 
+/* ------------------------------ */
+/* STYLES BELONGING TO openlayers (ol.js)   */
+/* ------------------------------ */
+.ol-attribution {
+	left: 0px;
+	width: fit-content;
+	text-align: left;
+}
+
+/* ------------------------------ */
+/* ALL OTHER STYLES 			*/
+/* ------------------------------ */
+html {
+	height: 99%; /*needed to have flex 'fill' work */
+}
 body {
+	position:absolute;
+	width:99%;
+	height:99%;  /* needed to have flex 'fill' work */
 	background-color: #FFFFFF;
 	font-family:	"LatoWeb","Helvetica Neue",Helvetica,Arial,sans-serif;
 	font-size:	0.9em;
@@ -40,32 +58,50 @@ body {
 	font-style:	normal;
 	color:	#000000;
 	vertical-align:	baseline;
-	padding: 4px;
+	padding: 0px;
+}
+#flexwrapper {
+	width: 100%;
+	height: 100%;
+	display: flex;
+	flex-direction: column;
+}
+#mapDiv, #menuDiv,#workflow {
+	display: flex;
+	outline: none;
+	overflow: hidden;
 }
 #mapDiv {
-	height: 500px;
+	height: 450px;
+	padding: 5px;
+	/* in Safari you can't shrink below 450px? */
+	resize: vertical;
 }
-#workflowDiv {
-	float: bottom;
-	/*height: 100%;*/
+#menuDiv {
+	height: 65px;
+	padding: 5px;
+	background: #e5e1e1;
+	color: #9b0000;
+	font-weight: 500;
+}
+#workflow {
+	flex: 1;
+	outline: none;
+	padding: 10px;
+	overflow: auto;
 }
 .menu {
 	vertical-align: middle;
-	padding: 15px;
 }
 #menubar {
 	width: 100%;
-	background-color: #e5e1e1;
-	background: #e5e1e1;
-	font-size: 1.2em;
-	color: #9b0000;
-	font-weight: 500;
-	padding: 10px;
 }
 #wfmsg {
+	font-size: 1.4em;
+	font-family: 'LatoWeb-Bold';
 	background-color: #e5e1e1;
 }
-#menuBtns {
+#UI_workflow {
 	background-color: #e5e1e1;
 	text-align: right;
 	align-items: center;
@@ -80,6 +116,10 @@ h1 {
 	font-weight: 600;
 }
 
+.menu {
+	vertical-align: middle;
+	padding: 15px;
+}
 table {
 	font-size:	14px;
 	color:	#000000;
@@ -87,9 +127,13 @@ table {
 	border-collapse: collapse;
 	background-color: #FFFFFF;
 }
-.menu {
-	vertical-align: middle;
-	padding: 15px;
+.tableFixHead {
+	overflow-y: auto;
+}
+.tableFixHead thead tr th {
+	/*does not work well in Chrome?*/
+	position: sticky;
+	top: -10px;
 }
 td.colname {
 	background-color: rgb(56, 75, 88);
