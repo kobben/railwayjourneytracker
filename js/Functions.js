@@ -886,6 +886,16 @@ function merc2osm(coord) {
 /*-- User Interface Functions  -*/
 /*-- **************************** -*/
 
+function reuseDateTime() {
+    let reuseDateTime;
+    const theStr = "Do you want to copy the date & time from the original...?";
+    if (confirm(theStr)) {
+        return true;
+    } else {
+        return false;
+    }
+}
+
 
 /*-- **************************** -*/
 /*-- Various Utility Functions  -*/
