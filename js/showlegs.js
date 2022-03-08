@@ -275,7 +275,7 @@ function doTruncateLeg(originalLeg, stopFromID, stopToID) {
     let tmpLeg = undefined;
     let tmpID = 121212; // will be changed by Postgres to serial ID
     if (reuseDateTime()) {
-        tmpLeg = new Leg(tmpID, 'TruncatedLeg', originalLeg.geometry.coordinates, undefined, undefined,  leg1.startDateTime, leg1.endDateTime,  copyNote, originalLeg.type);
+        tmpLeg = new Leg(tmpID, 'TruncatedLeg', originalLeg.geometry.coordinates, undefined, undefined,  originalLeg.startDateTime, originalLeg.endDateTime,  copyNote, originalLeg.type);
     } else {
         tmpLeg = new Leg(tmpID, 'TruncatedLeg', originalLeg.geometry.coordinates, undefined, undefined,  '', '', copyNote, originalLeg.type);
     }
