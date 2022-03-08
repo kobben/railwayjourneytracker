@@ -25,6 +25,7 @@ SPDX-License-Identifier: GPL-3.0-only
 * TURF Modular, simple-to-understand JavaScript functions that speak GeoJSON: https://turfjs.org
 
 #### Changelist:
+    v0.6 Mar 2022 - added choice to copy date&Time when editing Legs
     v0.5 Jan 2022 - added TruncateLeg
                   - all modules now start with loading legs step  
                   - constructLeg now also finds tram, subway & ferry routes

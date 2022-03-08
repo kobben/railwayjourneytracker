@@ -85,13 +85,13 @@ async function searchLegs(theWhereStr) {
     ReturnBtn.value = 'Reverse';
     ReturnBtn.style.display = "inline";
     ReturnBtn.addEventListener("click", function () {
-        returnOverSelectedLeg(allLegs);
+        returnOverSelectedLeg();
     });
     let ReuseBtn = document.getElementById("action5Btn");
     ReuseBtn.value = 'Copy';
     ReuseBtn.style.display = "inline";
     ReuseBtn.addEventListener("click", function () {
-        reuseSelectedLeg(allLegs);
+        reuseSelectedLeg();
     });
     let TruncateBtn = document.getElementById("action6Btn");
     TruncateBtn.value = 'Truncate';
@@ -185,7 +185,11 @@ function returnOverSelectedLeg() {
         const reverseNote = '[Return trip created from Leg ' + leg1.id + ']\n' + leg1.notes;
         let tmpLeg = undefined;
         let tmpID = 666666; // will be changed by Postgres to serial ID
-        tmpLeg = new Leg(tmpID, 'ReturnLeg', leg1.geometry.coordinates, leg1.stopTo, leg1.stopFrom, '', '', reverseNote, leg1.type);
+        if (reuseDateTime()) {
+            tmpLeg = new Leg(tmpID, 'ReturnLeg', leg1.geometry.coordinates, leg1.stopTo, leg1.stopFrom, leg1.startDateTime, leg1.endDateTime, reverseNote, leg1.type);
+        } else {
+            tmpLeg = new Leg(tmpID, 'ReturnLeg', leg1.geometry.coordinates, leg1.stopTo, leg1.stopFrom, '', '', reverseNote, leg1.type);
+        }
         selectNoLegs();
         newLegsData.clear();
         tmpLeg.bbox = calcBbox(tmpLeg.geometry.coordinates);
@@ -212,7 +216,11 @@ function reuseSelectedLeg() {
         const copyNote = '[Copy of Leg ' + leg1.id + ']\n' + leg1.notes;
         let tmpLeg = undefined;
         let tmpID = 5555555; // will be changed by Postgres to serial ID
-        tmpLeg = new Leg(tmpID, 'CopiedLeg', leg1.geometry.coordinates, leg1.stopFrom, leg1.stopTo, '', '', copyNote, leg1.type);
+        if (reuseDateTime()) {
+            tmpLeg = new Leg(tmpID, 'CopiedLeg', leg1.geometry.coordinates, leg1.stopFrom, leg1.stopTo, leg1.startDateTime, leg1.endDateTime, copyNote, leg1.type);
+        } else {
+            tmpLeg = new Leg(tmpID, 'CopiedLeg', leg1.geometry.coordinates, leg1.stopFrom, leg1.stopTo, '', '', copyNote, leg1.type);
+        }
         selectNoLegs();
         newLegsData.clear();
         tmpLeg.bbox = calcBbox(tmpLeg.geometry.coordinates);
@@ -237,17 +245,9 @@ function truncateSelectedLeg() {
     } else {
         zoomToLegs(false);
         UI.SetMessage("Select existing stops to truncate Leg at...", workflowMsg);
-
-        // let stopsToggle = document.getElementById("toggleControl");
-        // if (stopsToggle) {
-        //     stopsToggle.style.display = "inline"; //show stops toggle
-        //     myMap.getLayers().getArray().find(layer => layer.get('name') === 'Stops').setVisible(false); // hide layer first
-        // }
         mapStops(allStops, stopsData);
-
         let showIn = document.getElementById('workflow');
         makeStopsMenu(showIn, 0);
-
         UI.resetActionBtns();
         // create split button:
         let TruncateBtn = document.getElementById("action1Btn");
@@ -271,12 +271,14 @@ function truncateSelectedLeg() {
 
 function doTruncateLeg(originalLeg, stopFromID, stopToID) {
     UI.SetMessage("Truncating Leg...", workflowMsg);
-
     const copyNote = '[Truncated version of Leg ' + originalLeg.id + ']\n' + originalLeg.notes;
     let tmpLeg = undefined;
     let tmpID = 121212; // will be changed by Postgres to serial ID
-    tmpLeg = new Leg(tmpID, 'TruncatedLeg', originalLeg.geometry.coordinates, undefined, undefined,  '', '', copyNote, originalLeg.type);
-
+    if (reuseDateTime()) {
+        tmpLeg = new Leg(tmpID, 'TruncatedLeg', originalLeg.geometry.coordinates, undefined, undefined,  leg1.startDateTime, leg1.endDateTime,  copyNote, originalLeg.type);
+    } else {
+        tmpLeg = new Leg(tmpID, 'TruncatedLeg', originalLeg.geometry.coordinates, undefined, undefined,  '', '', copyNote, originalLeg.type);
+    }
     //first get stop objects from DB
     let stopFromAdded = false;
     let stopToAdded = false;
@@ -294,7 +296,6 @@ function doTruncateLeg(originalLeg, stopFromID, stopToID) {
     if (!stopFromAdded || !stopToAdded) {
         UI.SetMessage("From and/or To stops could not be created correctly.\nCheck if both are selected and are different...", errorMsg);
     } else {
-
         tmpLeg.geometry.coordinates = extractLegFromLine(tmpLeg.geometry.coordinates, tmpLeg.stopFrom.geometry.coordinates, tmpLeg.stopTo.geometry.coordinates);
         // first remove stops & lines of Relation from map:
         stopsData.clear();
@@ -306,16 +307,8 @@ function doTruncateLeg(originalLeg, stopFromID, stopToID) {
         showFeatureOnMap(tmpLeg.stopFrom.toOlFeature(), newStopsData);
         showFeatureOnMap(tmpLeg.stopTo.toOlFeature(), newStopsData);
         zoomMapToBbox(tmpLeg.bbox);
-
-        // let stopsToggle = document.getElementById("toggleControl");
-        // if (stopsToggle) {
-        //     myMap.getLayers().getArray().find(layer => layer.get('name') === 'Stops').setVisible(false); // hide layer
-        //     stopsToggle.style.display = "none"; //hide stops toggle
-        // }
-
         UI.SetMessage('Constructed Leg object.', workflowMsg);
         UI.SetMessage("Truncated Leg. Add properties & Save...", workflowMsg);
-
         let SaveBtn = document.getElementById("action3Btn");
         SaveBtn.value = 'ADD PROPERTIES & SAVE';
         SaveBtn.style.display = "inline";
@@ -400,10 +393,11 @@ function doMerge(leg1, leg2, mergedGeom) {
     const mergeNote = '[Merger of Legs ' + leg1.id + ' & ' + leg2.id + ']\n' + leg1.notes + '\n' + leg2.notes;
     let tmpLeg = undefined;
     let tmpID = 888888; // will be changed by Postgres to serial ID
-    tmpLeg = new Leg(tmpID, 'MergedLeg', mergedGeom, leg1.stopFrom, leg2.stopTo, leg1.startDateTime, leg2.endDateTime, mergeNote, leg1.type);
-
-    // stopsData.clear();
-    // legsData.clear();
+    if (reuseDateTime()) {
+        tmpLeg = new Leg(tmpID, 'MergedLeg', mergedGeom, leg1.stopFrom, leg2.stopTo, leg1.startDateTime, leg2.endDateTime, mergeNote, leg1.type);
+    } else {
+        tmpLeg = new Leg(tmpID, 'MergedLeg', mergedGeom, leg1.stopFrom, leg2.stopTo, '', '', mergeNote, leg1.type);
+    }
     selectNoLegs();
     newLegsData.clear();
     tmpLeg.bbox = calcBbox(tmpLeg.geometry.coordinates);
