@@ -53,7 +53,7 @@ let UI = {
     SetMessage: function (messageStr, messageType, messageXY) {
         //first some checking and if necessary repairing:
         if (messageStr === undefined) { //no message:
-            messageStr = "<empty msg>";
+            messageStr = "*empty msg*";
         }
         if (messageType === showMsg) { //log message and display message box
             const cx = (UI.appDiv.clientWidth / 2) + UI.appDiv.offsetLeft - 24;

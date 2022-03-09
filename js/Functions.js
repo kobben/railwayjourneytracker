@@ -36,7 +36,7 @@ function initMap(startCoords, startZoom, onClickCallback) {
         source : new ol.source.XYZ({
             attributions : [
                     ' <a href="https://www.openrailwaymap.org/">OpenRailwayMap</a>' ],
-            url : 'http://{a-c}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
+            url : 'https://{a-c}.tiles.openrailwaymap.org/standard/{z}/{x}/{y}.png',
             crossOrigin: null, //make it work inside canvas
             tilePixelRatio: 2, //server returns 512px img for 256 tiles
             maxZoom: 19, // XYZ's default is 18
