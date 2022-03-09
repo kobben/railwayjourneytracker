@@ -36,7 +36,7 @@
 /* STYLES BELONGING TO openlayers (ol.js)   */
 /* ------------------------------ */
 .ol-attribution {
-	left: 0px;
+	left: 0;
 	width: fit-content;
 	text-align: left;
 }
@@ -58,7 +58,7 @@ body {
 	font-style:	normal;
 	color:	#000000;
 	vertical-align:	baseline;
-	padding: 0px;
+	padding: 0;
 }
 #flexwrapper {
 	width: 100%;
@@ -293,7 +293,7 @@ a:hover.menu {
 	position: relative;
 	padding: 8px 14px;
 	margin-bottom: 0;
-	margin-left: 0px;
+	margin-left: 0;
 	margin-right:5px;
 	font-size: 1rem;
 	line-height: 14px;
