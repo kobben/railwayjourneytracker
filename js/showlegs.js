@@ -15,6 +15,7 @@ async function initShowLegs() {
         UI.SetMessage("Initializing show Legs...", workflowMsg);
         theWhereStr = '';
         legTypes = await loadTypesFromDB(theWhereStr); // 'where' uses PostGREST syntax, eg. notes=ilike.*interrail*
+        allStops = await loadStopsFromDB('');
         // ** step 1:
         let startAt = getParameterByName("start");
         if (startAt) {
@@ -28,7 +29,7 @@ async function initShowLegs() {
         // ***********
         UI.SetMessage("Load existing Legs...", workflowMsg);
         let showIn = document.getElementById('workflow');
-        showIn.innerHTML = HTML.searchLegForm();
+        showIn.innerHTML = HTML.searchLegForm(createStopsOptions(allStops));
         // ** wait for form to be submitted => step 3 = searchLegs() **//
     } else {
         UI.SetMessage("Could not initialise DB connection.", errorMsg);
@@ -55,7 +56,6 @@ async function searchLegs(theWhereStr) {
     allLegs = await loadLegsFromDB(theWhereStr); // 'where' uses PostGREST syntax, eg. notes=ilike.*interrail*
     mapLegs(allLegs, true);
     zoomToLegs(true);
-    allStops = await loadStopsFromDB('');
     displayInTable(allLegs, "workflow");
     let NewSearchBtn = document.getElementById("action1Btn");
     NewSearchBtn.value = 'New DB Search';
@@ -65,7 +65,7 @@ async function searchLegs(theWhereStr) {
         UI.resetActionBtns();
         UI.SetMessage("Load existing Legs...", workflowMsg);
         let showIn = document.getElementById('workflow');
-        showIn.innerHTML = HTML.searchLegForm();
+        showIn.innerHTML = HTML.searchLegForm(createStopsOptions(allStops));
         // ** wait for form to be submitted => step 3 = searchLegs() **//
     });
     let ZoomBtn = document.getElementById("action2Btn");

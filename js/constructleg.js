@@ -26,7 +26,7 @@ async function initConstructLegs() {
         // ** step 2:
         UI.SetMessage("Load existing Legs...", workflowMsg);
         let showIn = document.getElementById('workflow');
-        showIn.innerHTML = HTML.searchLegForm();
+        showIn.innerHTML = HTML.searchLegForm(createStopsOptions(allStops));
         // ** wait for form to be submitted => step 3 = searchLegs() **//
     } else {
         UI.SetMessage("Could not initialise DB connection.", errorMsg);

@@ -372,6 +372,15 @@ function createStopsMenu(theStops, toOrFrom) {
     return htmlmenu;
 }
 
+// Create  dropdowm <option> list of stops currently in DB
+function createStopsOptions(theStops) {
+    let htmloptions = "<option value=''>--</option>";
+    for (let aStop of theStops) {
+        htmloptions += `<option value="${aStop.id}">${aStop.name}</option>`;
+    }
+    return htmloptions;
+}
+
 // utility function to choose stop and show it on map
 function selectDBStop(toOrFrom, stopId) {
     if (toOrFrom === 0) { //from
@@ -905,11 +914,10 @@ function reuseDateTime() {
 // changes the WHERE statement in a PG_REST call based on choices from HTML Forms
 // expects colNames: an array of column names in the Form (and the corresponding DB Table):
 // ["id", "name", etc...]
-// Does not return but SETS the GLOBAL theWhereStr (tb used by HTML form submissions)
+// Does NOT return anything - but SETS the GLOBAL theWhereStr (tb used by HTML form submissions)
 function changePGRESTWhere(colNames) {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
     theWhereStr = ""; // needs to be a global, cause various async Form submissions use it...
-    let theAddDatesStr = "";
     let theAndOr = document.getElementById("and_or").value;
     for (let theColName of colNames) {
         let theCol = document.getElementById("col_" + theColName).value;
