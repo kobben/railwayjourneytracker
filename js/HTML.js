@@ -121,8 +121,9 @@ HTML = {
     <option value="and" selected >comply to all search criteria (logical AND)</option>
     <option value="or" >comply to at least one of the search criteria (logical OR)</option>
   </select>  Leave empty fields not used as search criteria... 
-  <button class="bigbutton" type="reset"  name="reset" id="reset">Clear Form</button>
   <input class="bigbutton" type="button" onclick="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type']);searchLegs(theWhereStr)" value="START SEARCH" />
+  <button class="bigbutton" type="reset" name="reset" id="reset">Clear Form</button>
+  <input class="bigbutton" type="button" name="skip" id="skip" onclick="searchLegs('and=(notes.eq.*NOTHING*)')" value="Skip/Cancel"></input>
 </td></tr>
         <tr>
             <td class="colname">ID:
@@ -232,126 +233,24 @@ HTML = {
     </form>
     `; // do NOT forget closing `; !!
     },
- //+++++++++++++++++++++++++++++++++++++++++++++++++++
-    OLD__searchLegForm: function () {
+//+++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++
+    importLegForm: function () {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
         // do NOT forget opening ` !
         return `
-<form id="searchForm" name="searchForm">
+
+<form id="importLegForm" name="importLegForm">
 <table>
-<tr><td colspan="6">Search for records that: 
-  <select name="and_or" id="and_or" onChange="changePGRESTWhere(['id', 'name', 'stopfrom', 'stopto', 'notes', 'startdatetime', 'enddatetime','type'])">
-    <option value="and" selected >comply to all search criteria (logical AND)</option>
-    <option value="or" >comply to at least one of the search criteria (logical OR)</option>
-  </select>  Leave empty fields not used as search criteria... 
-  <button class="bigbutton" type="reset"  name="reset" id="reset">Clear Form</button>
-  <input class="bigbutton" type="button" onclick="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type']);searchLegs(theWhereStr)" value="START SEARCH" />
-</td></tr>
-        <tr>
-            <td class="colname">ID:
-            </td>
-            <td>
-                <select name="op_id" id="op_id" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])">
-                    <option value="=" selected>=</option>
-                    <option value="<" >&lt;</option>
-                    <option value=">">&gt;</option>
-                    <option value="<>">&ne;</option>
-                </select>
-            </td>
-            <td>
-                <input id="col_id" name="id" type="number" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])"> 
-            </td>
-            <td class="colname">Name:
-            </>
-            <td>
-                <select name="op_name" id="op_name" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])">
-                    <option value="contains" selected>contains</option>
-                    <option value="equals">equals</option>
-                    <option value="beginswith">begins with</option>
-                    <option value="endswith">ends with</option>
-                </select>
-            </td>
-            <td>
-                <input id="col_name" name="name" type="text" size="40" maxLength="255" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])">  
-            </td>
-        </tr>
-        <tr>
-            <td class="colname">From (id):
-            </td>
-            <td>
-                <select name="op_stopfrom" id="op_stopfrom" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])">
-                    <option value="=" selected>=</option>
-                </select>
-            </td>
-            <td>
-                <input id="col_stopfrom" name="from" type="number" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])"> 
-            </td>
-            <td class="colname">To (id):
-            </td>
-            <td>
-                <select name="op_stopto" id="op_stopto" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])">
-                    <option value="=" selected>=</option>
-                </select>
-            </td>
-            <td>
-                <input id="col_stopto" name="stopto" type="number" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])"> 
-            </td>
-        </tr>
-        <tr>
-            <td class="colname">Start:
-            </td> 
-            <td>
-                <select name="op_startdatetime" id="op_startdatetime" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])">
-                <option value="=" >at</option>
-                <option value="<" >before</option>
-                <option value=">" selected>after</option>
-                </select>
-            </td>
-            <td>
-                <input id="col_startdatetime" name="startdatetime" type="text" size="25" maxLength="64" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])">
-            </td>
-            <td class="colname">End:
-            </td>
-            <td>
-                <select name="op_enddatetime" id="op_enddatetime" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])">
-                <option value="=" >at</option>
-                <option value="<" selected>before</option>
-                <option value=">">after</option>
-                </select>
-            </td>
-            <td>
-                <input id="col_enddatetime" name="enddatetime" type="text" size="25" maxLength="64" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])">
-                 YYYY-MM-DDThh:mm 
-            </td>
-        </tr>   
-        <tr>
-            <td class="colname">Type: </td>
-            <td >
-                <select name="op_type" id="op_type" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])">
-                    <option value="=" selected>=</option>
-                </select>
-            </td>
-            <td>
-                <input id="col_type" name="type" type="text" size="25" maxLength="255" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])"> 
-            </td>
-            <td class="colname">Notes: </td>
-            <td >
-                <select name="op_notes" id="op_notes" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])">
-                    <option value="contains" selected>contains</option>
-                    <option value="equals">equals</option>
-                    <option value="beginswith">begins with</option>
-                    <option value="endswith">ends with</option>
-                </select>
-            </td>
-            <td colspan="2">
-                <input id="col_notes" name="notes" type="text" size="80" maxLength="255" onChange="changePGRESTWhere(['id','name','stopfrom','stopto','notes','startdatetime','enddatetime','type'])"> 
-            </td>
-        </tr>
+    <tr>
+     <td><input class="bigbutton" id="importBtn" type="button" value="IMPORT" />Paste a valid GeoJSON below.</td>
+     </tr><tr>
+     <td><textarea id="geom" name="geom" cols="120" rows="10"></textarea></td>
+    </tr>
 </table>
-    </form>
+</form>
     `; // do NOT forget closing `; !!
     },
-//+++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
     searchOSMrelationIDForm: function () {

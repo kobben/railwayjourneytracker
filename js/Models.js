@@ -23,7 +23,7 @@ class OSMrelation {
         this.toGeoJSON = function () {
             // full GeoJSON Feature in lonlat
             let coordsStr = JSON.stringify(this.geometry.coordinates);
-            let jsonObj = {
+            return {
                 type: "Feature",
                 geometry: {
                     type: "MultiLineString",
@@ -34,7 +34,6 @@ class OSMrelation {
                     name: this.name
                 }
             }
-            return jsonObj;
         };
     }
 }
@@ -60,7 +59,7 @@ class Stop {
         };
         this.toGeoJSON = function () {
             // full geoJSON feature, including attributes
-            let jsonObj = {
+            return {
                 type: "Feature",
                 geometry: this.geometry,
                 properties: {
@@ -68,7 +67,6 @@ class Stop {
                     name: this.name,
                 }
             }
-            return jsonObj;
         };
     }
 }
@@ -101,7 +99,7 @@ class Leg { // a leg of a trip: one train from boarding stop to disembarking sto
         };
         this.toGeoJSON = function () {
             // creates full geoJSON feature, including attributes
-            let jsonObj = {
+            return {
                 type: "Feature",
                 geometry: this.geometry,
                 properties: {
@@ -115,19 +113,17 @@ class Leg { // a leg of a trip: one train from boarding stop to disembarking sto
                     stopto: this.stopTo.id
                 }
             }
-            return jsonObj;
         };
     }
 }
 
-class Trip {
+class Journey {
     constructor(id, name, notes, type, startDateTime, endDateTime, legs) {
         this.id = id;
         this.name = name;
-        this.type = undetermined;
         this.selected = true; // selector boolean used later in mapping and other selections
         this.notes = notes;
-        this.type = type; // default = 0 = ?
+        this.type = type; // default = 0 = bussiness
         this.startDateTime = startDateTime;
         this.endDateTime = endDateTime;
         this.legs = []; // a list of Leg object IDs

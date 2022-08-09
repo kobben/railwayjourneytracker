@@ -42,6 +42,7 @@ async function initDrawLegs() {
 
 /*-- STEP 3: Load Legs & show them  -*/
 async function searchLegs(theWhereStr) {
+    console.log(theWhereStr);
     allLegs = await loadLegsFromDB(theWhereStr); // 'where' uses PostGREST syntax, eg. notes=ilike.*interrail*
     mapLegs(allLegs, true);
     zoomToLegs(true);
@@ -52,9 +53,10 @@ async function searchLegs(theWhereStr) {
 /*-- End of STEP 3  -*/
 
 
-/*-- STEP 3: shows all stops in to and from menu:  -*/
+/*-- STEP 4: shows all stops in to and from menu:  -*/
 function doStopSelection() {
-    stopFromID = undefined; stopToID = undefined;
+    stopFromID = undefined;
+    stopToID = undefined;
     newStopsData.clear();
     UI.SetMessage("Select stops to draw Leg between...", workflowMsg);
     mapLegs(allLegs, false, legsData);
@@ -62,11 +64,19 @@ function doStopSelection() {
     let showIn = document.getElementById('workflow');
     makeStopsMenu(showIn, 0); // 0 to force all stops to show
     UI.resetActionBtns();
+    // create DrawBtn:
     let DrawBtn = document.getElementById("action4Btn");
     DrawBtn.value = 'DRAW Leg';
     DrawBtn.style.display = "inline";
     DrawBtn.addEventListener("click", function () {
-        drawLeg(); //start drawing mode
+        drawLeg(); //  step 5a: start drawing mode
+    });
+    // create ImportBtn:
+    let ImportBtn = document.getElementById("action3Btn");
+    ImportBtn.value = 'IMPORT Leg';
+    ImportBtn.style.display = "inline";
+    ImportBtn.addEventListener("click", function () {
+        importLeg(); //  step 5b: show import form
     });
     // create refreshStopsBtn:
     let refreshStopsBtn = document.getElementById("action2Btn");
@@ -78,9 +88,10 @@ function doStopSelection() {
         makeStopsMenu(showIn, 0);
     });
 }
-/*-- End of STEP 5  -*/
 
-/*-- STEP 5: DrawLeg Code, based on:
+/*-- End of STEP 4  -*/
+
+/*-- STEP 5a: DrawLeg Code, based on:
         https://openlayers.org/en/latest/examples/draw-features.html
 -*/
 function drawLeg() {
@@ -104,7 +115,8 @@ function drawLeg() {
         CancelBtn.addEventListener("click", function () {
             draw.dispatchEvent('drawend');
             newLegsData.clear();
-            stopFromID = undefined; stopToID = undefined;
+            stopFromID = undefined;
+            stopToID = undefined;
             newStopsData.clear();
             doStopSelection(); // ==> go back to step 3
         });
@@ -112,10 +124,63 @@ function drawLeg() {
         draw.on('drawend', stopDrawing); // in  drawleg.js
         // will now be drawing until last vertex clicked again
         // OR if user clicks ReadyBth (see UI_DrawMode)
-        //  => step 5
+        //  => step 6a
     }
 }
-/*-- End of STEP 5  -*/
+
+/*-- End of STEP 5a  -*/
+
+
+/*-- STEP 5b: ImportLeg
+-*/
+function importLeg() {
+    if (stopFromID === undefined) {
+        UI.SetMessage('Must select a start Stop!', errorMsg);
+    } else if (stopToID === undefined) {
+        UI.SetMessage('Must select an end Stop!', errorMsg);
+    } else {
+        UI.SetMessage("Import Leg geometry...", workflowMsg);
+        // UI.resetActionBtns();
+
+        let showIn = document.getElementById('workflow');
+        showIn.innerHTML = HTML.importLegForm();
+        let ImportBtn = document.getElementById("importBtn");
+        ImportBtn.addEventListener("click", function () {
+            let geoJSONStr = document.getElementById('geom').value;
+            let importGeoJSON;
+            let isValid = true;
+            let errStr = 'ERROR:\n';
+            try {
+                importGeoJSON = JSON.parse(geoJSONStr);
+            } catch (e) {
+                isValid = false;
+                errStr += e + '].\n';
+                UI.SetMessage(errStr, errorMsg);
+            }
+            if (isValid) {
+                if (importGeoJSON.type !== "FeatureCollection") {
+                    isValid = false;
+                    errStr += 'Input does not seem to be a GeoJSON FeatureCollection.\n';
+                } else if (importGeoJSON.features.length !== 1) {
+                    isValid = false;
+                    errStr += 'There should be exactly 1 Feature in FeatureCollection.\n';
+                } else if (importGeoJSON.features[0].geometry.type !== "LineString") {
+                    isValid = false;
+                    errStr += 'Feature is not a LineString.\n';
+                }
+                if (isValid) {
+                    createDrawnLeg(importGeoJSON.features[0].geometry.coordinates);
+                } else {
+                    UI.SetMessage(errStr, errorMsg);
+                }
+            }
+
+            // ** wait for form to be submitted => skip step 6, go direct to step 7
+        });
+    }
+}
+
+/*-- End of STEP 5b  -*/
 
 
 /*-- STEP 6: when drawing ends, collect results...
@@ -129,7 +194,8 @@ function stopDrawing() {
     CancelBtn.style.display = "inline";
     CancelBtn.addEventListener("click", function () {
         newLegsData.clear();
-        stopFromID = undefined; stopToID = undefined;
+        stopFromID = undefined;
+        stopToID = undefined;
         newStopsData.clear();
         doStopSelection(); // ==> go back to step 3
     });
@@ -140,11 +206,12 @@ function stopDrawing() {
         let drawnLine;
         for (drawnLine of newLegsData.getFeatures()) { //normally should be only 1!
             let geom = drawnLine.getGeometry().transform('EPSG:3857', 'EPSG:4326').getCoordinates();
-            console.log(geom);
+            // console.log(geom.toString());
             createDrawnLeg(geom);
         }
     });
 }
+
 /*-- End of STEP 6  -*/
 
 
@@ -154,6 +221,7 @@ function createDrawnLeg(geom) {
         UI.SetMessage("Error: No Geometry. Could not construct valid Line from drawing.", errorMsg);
         UI.SetMessage('Aborted construction', workflowMsg);
     } else {
+        // console.log(geom.toString());
         let legGeom = geom;
         // first remove stops & lines from map:
         stopsData.clear();
@@ -161,7 +229,7 @@ function createDrawnLeg(geom) {
         //temp name & id, UID will be created by DB if saved:
         let tmpID = 444444; // will be changed by Postgres to serial ID
         let tmpLeg = undefined;
-        tmpLeg = new Leg(tmpID,'drawnLeg', legGeom, undefined, undefined, null,
+        tmpLeg = new Leg(tmpID, 'drawnLeg', legGeom, undefined, undefined, null,
             null, '', '', '');
         let stopFromAdded = false;
         let stopToAdded = false;
@@ -190,6 +258,7 @@ function createDrawnLeg(geom) {
         }
     }
 }
+
 /*-- End of STEP 7  -*/
 
 /*-- STEP 8: show form to save leg in DB: -*/
@@ -222,7 +291,7 @@ function selectClickedStop(evt) {
 /*--   -*/
 function toggleClickedFeatures(ids) {
     for (let id of ids) {
-        let IDselect = document.getElementById("select_"+id);
+        let IDselect = document.getElementById("select_" + id);
         if (IDselect) { //exists in list
             toggleSelect(id); //toggle in list object
             if (IDselect.checked === true) { //toggle in table

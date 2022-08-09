@@ -675,14 +675,14 @@ function isEqual(c1, c2) {
 }
 
 // find two coords in a LineString and returns the part of the Linestring that is between them
-// now using Turf.js to also find slices when stop is not exactly on line:
+// using Turf.js to also find slices when stop is not exactly on line:
 function extractLegFromLine(geom, firstCoordToFind, secCoordToFind) {
     let t_line = turf.lineString(geom);
     let t_start = turf.point(firstCoordToFind);
     let t_stop = turf.point(secCoordToFind);
     let t_sliced = turf.lineSlice(t_start, t_stop, t_line);
-    // console.log("LS => leg:");
-    // console.log(t_sliced.geometry.coordinates);
+    console.log("LS => leg:");
+    console.log(t_sliced.geometry.coordinates);
     return t_sliced.geometry.coordinates;
 }
 
