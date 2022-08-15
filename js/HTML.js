@@ -103,7 +103,7 @@ HTML = {
             <tr><td>${toStopsMenu}</td></tr>
         </table>
     </td></tr>
-<tr><td colspan='2'>If stops not present in DB, first create them using the option <a href='./constructstop.html' target='_blank'>'Get Stop from OSM or Create new Stop' and then refresh stops menu</a>...</td></tr>
+<tr><td colspan='2'>If stops not present in DB, first create them using the option <a href='./constructstop.html' target='_blank'>'Get Stop from OSM or Create new Stop'</a> and then REFRESH Stops menu...</td></tr>
 </table>
 `; // do NOT forget closing `; !!
     }
@@ -243,7 +243,9 @@ HTML = {
 <form id="importLegForm" name="importLegForm">
 <table>
     <tr>
-     <td><input class="bigbutton" id="importBtn" type="button" value="IMPORT" />Paste a valid GeoJSON below.</td>
+     <td><input class="bigbutton" id="cancelBtn" type="button" value="Cancel" />
+     <input class="bigbutton" id="importBtn" type="button" value="IMPORT" />
+     Paste a valid GeoJSON below. Create e.g. in GIS or <a href="https://signal.eu.org/osm/" target="_blank">Railway Routing</a></td>
      </tr><tr>
      <td><textarea id="geom" name="geom" cols="120" rows="10"></textarea></td>
     </tr>
@@ -476,7 +478,7 @@ HTML = {
         <tr class="plain">
             <td  class="colname">Geometry:</td>
             <td>
-                <a onClick="alert('Cannot edit JSON')">[JSON]</a>
+                <a onClick="alert('Cannot edit JSON...')">${escapeStr(JSON.stringify(theLeg.geometry)).slice(0,120) + ' ...'}</a>
             </td>
         </tr>
         </tbody></table>
@@ -528,9 +530,9 @@ HTML = {
 	<td>${(theLeg.endDateTime === '' || theLeg.endDateTime === 'null') ? '-' : HTML.formatDateTime(theLeg.endDateTime)}</td>
 	<td>${legTypes[theLeg.type]}</td>
 	<td>${HTML.replaceBR(theLeg.notes)}</td>
-	<td><input type="checkbox" id="select_${theLeg.id}" onchange="toggleSelect(${theLeg.id})" ${theLeg.selected ? 'checked' : ''} /></td>
-	<td><input type="button" id="edit_${theLeg.id}" onclick="editLeg(${theLeg.id},'workflow')" value="EDIT" /></td>
-	<td><input type="button" id="del_${theLeg.id}" onclick="delLeg(${theLeg.id})" value="DEL" /></td>
+	<td style="text-align: center"><input type="checkbox" id="select_${theLeg.id}" onchange="toggleSelect(${theLeg.id})" ${theLeg.selected ? 'checked' : ''} /></td>
+	<td style="text-align: center"><input type="button" id="edit_${theLeg.id}" onclick="editLeg(${theLeg.id},'workflow')" value="EDIT" /></td>
+	<td style="text-align: center"><input type="button" id="del_${theLeg.id}" onclick="delLeg(${theLeg.id})" value="DEL" /></td>
 
 </tr>
 `; // do NOT forget closing `; !!

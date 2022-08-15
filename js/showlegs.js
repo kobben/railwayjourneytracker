@@ -34,6 +34,7 @@ async function initShowLegs() {
     } else {
         UI.SetMessage("Could not initialise DB connection.", errorMsg);
     }
+    filterTable = false;
 }
 
 /*-- end of init -*/
@@ -63,37 +64,31 @@ async function searchLegs(theWhereStr) {
     NewSearchBtn.addEventListener("click", function () {
         // new search of legs from DB
         UI.resetActionBtns();
+        filterTable = false;
         UI.SetMessage("Load existing Legs...", workflowMsg);
         let showIn = document.getElementById('workflow');
         showIn.innerHTML = HTML.searchLegForm(createStopsOptions(allStops));
         // ** wait for form to be submitted => step 3 = searchLegs() **//
     });
-    let ZoomBtn = document.getElementById("action2Btn");
-    ZoomBtn.value = 'Zoom to';
-    ZoomBtn.style.display = "inline";
-    ZoomBtn.addEventListener("click", function () {
-        // zoom to legs where .selected = true
-        zoomToLegs(false);
-    });
-    let MergeBtn = document.getElementById("action3Btn");
+    let MergeBtn = document.getElementById("action2Btn");
     MergeBtn.value = 'Merge';
     MergeBtn.style.display = "inline";
     MergeBtn.addEventListener("click", function () {
         mergeSelectedLegs(allLegs);
     });
-    let ReturnBtn = document.getElementById("action4Btn");
+    let ReturnBtn = document.getElementById("action3Btn");
     ReturnBtn.value = 'Reverse';
     ReturnBtn.style.display = "inline";
     ReturnBtn.addEventListener("click", function () {
         returnOverSelectedLeg();
     });
-    let ReuseBtn = document.getElementById("action5Btn");
+    let ReuseBtn = document.getElementById("action4Btn");
     ReuseBtn.value = 'Copy';
     ReuseBtn.style.display = "inline";
     ReuseBtn.addEventListener("click", function () {
         reuseSelectedLeg();
     });
-    let TruncateBtn = document.getElementById("action6Btn");
+    let TruncateBtn = document.getElementById("action5Btn");
     TruncateBtn.value = 'Truncate';
     TruncateBtn.style.display = "inline";
     TruncateBtn.addEventListener("click", function () {
@@ -118,17 +113,32 @@ function toggleClickedFeatures(ids) {
     }
 }
 
-function displayInTable(theLegs, htmlElem) {
+function toggleFilter(filterTable) {
+    displayInTable(allLegs, "workflow", filterTable);
+}
+
+function displayInTable(theLegs, htmlElem, filter = false) {
     let showIn = document.getElementById(htmlElem);
     let html = '<table class="tableFixHead"><thead><tr><th>ID</th><th>Name</th><th>From</th><th>To</th><th>Start</th><th>End</th><th>Type</th><th>Notes</th>';
-    html += '<th>Selected</th>';
-    html += '<th><input type="button" onclick="selectNoLegs()"  value="None"/></th>';
-    html += '<th><input type="button" onclick="selectAllLegs()" value="All"/></th>';
+    // html += '<th>Selected</th>';
+    html += '<th style="text-align: center">Select:</th>';
+    html += '<th style="text-align: center"><input type="button" style="height:20px;width:60px" onclick="selectNoLegs()"  value="none"/><br>';
+    html += '<input type="button" style="height:20px;width:60px" onclick="selectAllLegs()" value="all"/></th>';
+    html += '<th style="text-align: center"><input type="button" style="height:20px;width:60px" onclick="zoomToLegs(false)"  value="zoomto"/><br>';
+    if (filter) {
+        html += '<input type="button" style="height:20px;width:60px" onclick="toggleFilter(false)" value="unfilter"/></th>';
+    } else {
+        html += '<input type="button" style="height:20px;width:60px" onclick="toggleFilter(true)" value="filter"/></th>';
+    }
     html += '</tr></thead>';
     for (let aLeg of theLegs) {
-        // if (aLeg.selected) {
-        html += HTML.showLegRow(aLeg);
-        // }
+        if (filter) {
+            if (aLeg.selected) {
+                html += HTML.showLegRow(aLeg);
+            }
+        } else {
+            html += HTML.showLegRow(aLeg);
+        }
     }
     html += '<tr><th colspan="11"></th></tr></table>';
     showIn.innerHTML = html;
@@ -417,6 +427,7 @@ function editLeg(ID, htmlElem) {
             if (aLeg.startDateTime === null || aLeg.startDateTime === 'null') aLeg.startDateTime = '';
             if (aLeg.endDateTime === null || aLeg.endDateTime === 'null') aLeg.endDateTime = '';
             const html = HTML.editLegForm(aLeg);
+            DEBUG = aLeg.geometry;
             showIn.innerHTML = html;
             document.getElementById("leg_type_select").selectedIndex = aLeg.type;
             let SaveBtn = document.getElementById("SaveBtn");

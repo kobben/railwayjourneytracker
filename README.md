@@ -26,6 +26,10 @@ SPDX-License-Identifier: GPL-3.0-only
 
 #### Changelist:
     v0.7 Aug 2022 - added import legs from geoJSON option
+                  - added toggleFilter() to displayInTable(): un/filter table on selection
+                  - moved ZoomTo button to table header
+                  - using encodeURIComponent(theCol) in changePGRESTWhere(colNames) to 
+                    provide for searches with special characters (such as & + etc)
     v0.6 Mar 2022 - added choice to copy date&Time when editing Legs
                   - now using createStopsOptions() in HTML forms
     v0.5 Jan 2022 - added TruncateLeg

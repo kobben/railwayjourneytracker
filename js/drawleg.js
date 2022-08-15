@@ -58,7 +58,7 @@ function doStopSelection() {
     stopFromID = undefined;
     stopToID = undefined;
     newStopsData.clear();
-    UI.SetMessage("Select stops to draw Leg between...", workflowMsg);
+    UI.SetMessage("Select stops to create a Leg between...", workflowMsg);
     mapLegs(allLegs, false, legsData);
     mapStops(allStops);
     let showIn = document.getElementById('workflow');
@@ -140,10 +140,16 @@ function importLeg() {
         UI.SetMessage('Must select an end Stop!', errorMsg);
     } else {
         UI.SetMessage("Import Leg geometry...", workflowMsg);
-        // UI.resetActionBtns();
-
+        UI.resetActionBtns();
         let showIn = document.getElementById('workflow');
         showIn.innerHTML = HTML.importLegForm();
+        let CancelBtn = document.getElementById("cancelBtn");
+        CancelBtn.addEventListener("click", function () {
+            stopFromID = undefined;
+            stopToID = undefined;
+            newStopsData.clear();
+            doStopSelection(); // ==> go back to step 3
+        });
         let ImportBtn = document.getElementById("importBtn");
         ImportBtn.addEventListener("click", function () {
             let geoJSONStr = document.getElementById('geom').value;

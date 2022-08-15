@@ -920,7 +920,7 @@ function changePGRESTWhere(colNames) {
     theWhereStr = ""; // needs to be a global, cause various async Form submissions use it...
     let theAndOr = document.getElementById("and_or").value;
     for (let theColName of colNames) {
-        let theCol = document.getElementById("col_" + theColName).value;
+        let theCol = encodeURIComponent(document.getElementById("col_" + theColName).value);
         let theOp = document.getElementById("op_" + theColName).value;
         if (theCol !== "") {
             if (theOp === "equals") {
@@ -955,6 +955,7 @@ function changePGRESTWhere(colNames) {
         theWhereStr = theWhereStr.substring(0, theWhereStr.length - 1); // remove , from last one...
         theWhereStr += ")";
     }
+    // console.log('PGRESTWhere = ' + theWhereStr);
 }
 
 

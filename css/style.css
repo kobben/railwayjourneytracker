@@ -98,7 +98,7 @@ body {
 }
 #wfmsg {
 	font-size: 1.4em;
-	font-family: 'LatoWeb-Bold';
+	font-family: 'LatoWeb-Bold', sans-serif;
 	background-color: #e5e1e1;
 }
 #UI_workflow {
@@ -124,10 +124,12 @@ table {
 	font-size:	14px;
 	color:	#000000;
 	vertical-align:	baseline;
+	height: fit-content;
 	border-collapse: collapse;
 	background-color: #FFFFFF;
 }
 .tableFixHead {
+	width: 100%;
 	overflow-y: auto;
 }
 .tableFixHead thead tr th {
