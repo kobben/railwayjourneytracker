@@ -309,6 +309,7 @@ class LegsCollection {
     }
 
     async loadFromDB(whereStr = '', legStopsCollection = null) {
+        let legsInJourneys = await DB.loadLegsInJourneysFromDB();
         let legsFound = [];
         let loadedLeg = undefined;
         let postUrl = '/legs?';
@@ -333,6 +334,9 @@ class LegsCollection {
                                 legStopsCollection.addStop(aStop);
                             }
                         }
+                    }
+                    for (let journeyJSON of legsInJourneys) {
+                        if (journeyJSON.legsarray.includes(legfound.id)) loadedLeg.partofjourney = journeyJSON.id;
                     }
                     legsFound.push(loadedLeg);
                     loadedLeg = undefined;
@@ -478,6 +482,7 @@ class Leg {
         this.timesequential = timesequential; // default = false
         this.selected = false; // selector boolean used later in mapping and other selections
         this.mapped = false; // selector boolean used later in mapping and other selections
+        this.partofjourney = undefined;
     }
 
     toOlFeature() {
@@ -513,6 +518,14 @@ class Leg {
                 stopfrom: this.stopFrom.id,
                 stopto: this.stopTo.id
             }
+        }
+    }
+
+    isPartOfJourney() {
+        if (this.partofjourney === undefined) {
+            return undefined;
+        } else {
+            return this.partofjourney;
         }
     }
 

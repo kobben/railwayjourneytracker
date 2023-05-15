@@ -41,18 +41,30 @@ HTML = {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
     createLegsButtons: function (theJourney, asColumn = true) {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
-    let html = '';
-    for (let aLegID of theJourney.getLegIDs()) {
-        html += '<button  id="btn_' + aLegID + '" ' +
-            ' onmouseover="highlightLegOfJourney(' + theJourney.getID() + ',' + aLegID + ', true)"' +
-            ' onmouseout="highlightLegOfJourney(' + theJourney.getID() + ',' + aLegID + ', false)"' +
-            ' onclick="showLegOfJourney(' + aLegID + ')"' +
-            '>' + aLegID + '</button>';
-        if (asColumn) {
-            html += '<br/>';
+        let html = '';
+        for (let aLegID of theJourney.getLegIDs()) {
+            html += '<button  id="btn_' + aLegID + '" ' +
+                ' onmouseover="highlightLegOfJourney(' + theJourney.getID() + ',' + aLegID + ', true)"' +
+                ' onmouseout="highlightLegOfJourney(' + theJourney.getID() + ',' + aLegID + ', false)"' +
+                ' onclick="showLegOfJourney(' + aLegID + ')"' +
+                '>' + aLegID + '</button>';
+            if (asColumn) {
+                html += '<br/>';
+            }
         }
+        return html;
     }
-    return html;
+    ,
+//+++++++++++++++++++++++++++++++++++++++++++++++++++
+    createJourneyButton: function (journeyID) {
+//+++++++++++++++++++++++++++++++++++++++++++++++++++
+        let html = '';
+        if (journeyID !== undefined) {
+            html += '<button  id="btn_' + journeyID + '" ' +
+                ' onclick="showJourneyOfLeg(' + journeyID + ')"' +
+                '>' + journeyID + '</button>';
+        }
+        return html;
     },
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
     findTypeName: function (theTypes, id) {
@@ -950,7 +962,7 @@ HTML = {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
         let html = `
 <table class="tableFixHead"><thead>
-<tr><th>ID</th><th>From</th><th>To</th><th>Start</th><th>End</th><th>Seq.</th><th>Type</th><th>Notes</th>
+<tr><th>ID</th><th>From</th><th>To</th><th>Start</th><th>End</th><th>Seq.</th><th>Type</th><th>Notes</th><th>In Journey</th>
 <th>Select:</th><th style="text-align: center"><input type="button" style="height:20px;width:60px" id="selectNone" value="none"/><br>
 <input type="button" style="height:20px;width:60px" id="selectAll" value="all"/></th>
 <th style="text-align: center"><input type="button" style="height:20px;width:60px" id="zoomTo" value="zoomto"/><br>
@@ -970,6 +982,7 @@ HTML = {
 	<td>${(aLeg.timesequential) ? '<span style="font-size: 1.5em">✓︎︎</span>' : ''}</td>
 	<td>${HTML.findTypeName(APP.legtypes, aLeg.type)}</td>
 	<td>${HTML.replaceBR(aLeg.notes)}</td>
+	<td>${HTML.createJourneyButton(aLeg.partofjourney)}</td>
 	<td><input type="checkbox" id="select_${aLeg.id}" ${aLeg.selected ? 'checked' : ''} /></td>
 `;
                 if (editable) html += `

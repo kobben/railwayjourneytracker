@@ -268,6 +268,3 @@ function highlightLegOfJourney(theJourneyID, theLegID, highlight) {
     theLeg.selectOnMap(theLeg.selected, APP.map.getLayerDataByName("Journeys"));
 }
 
-function showLegOfJourney(theLegID) {
-    window.open("./showlegs.html?id=" + theLegID);
-}

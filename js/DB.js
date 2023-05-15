@@ -38,6 +38,17 @@ DB = {
         UI.SetMessage("ERROR in DB module: " + errStr, errorMsg);
     }
     ,
+    loadLegsInJourneysFromDB: async function (theWhereStr = '') {
+        let postUrl = '/journeys?select=id,legsarray' + theWhereStr;
+        // console.log(postUrl);
+        let resultJSON = await DB.query("GET", postUrl);
+        if (resultJSON.error === true) {
+            DB.giveErrorMsg(resultJSON);
+        } else {
+            return resultJSON.data;
+        }
+    }
+    ,
     loadTypesFromDB: async function (typesTable) {
         let typesFound = [];
         let postUrl = '/' + typesTable + '?select=id,name&order=id&';

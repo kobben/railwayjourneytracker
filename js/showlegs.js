@@ -406,25 +406,14 @@ function editLeg(theLegs, ID) {
 /*-- Delete selected Leg  -*/
 async function deleteLeg(theLegs, ID) {
     // Check if leg used in Journey: if so, cannot delete!
-    let canDelete = true;
-    let postUrl = '/journeys?select=id,legsarray';
-    // console.log(postUrl);
-    let resultJSON = await DB.query("GET", postUrl);
-    if (resultJSON.error === true) {
-        DB.giveErrorMsg(resultJSON);
-        canDelete = false
-    } else {
-        for (let journeyJSON of resultJSON.data) {
-            if (journeyJSON.legsarray.includes(ID)) {
-                canDelete = false;
-                const theStr = "Cannot delete Leg " + ID + ", it is part of Journey " + journeyJSON.id + "\n[click OK to see/edit this Journey, cancel to skip]"
-               if (confirm(theStr)) {
-                   window.open("./showjourneys.html?id=" + journeyJSON.id);
-               }
-            }
+    let LegIsPartOfJourney = theLegs.getLegById(ID).isPartOfJourney();
+    if (LegIsPartOfJourney !== undefined) {
+        const theStr = "Cannot delete Leg " + ID + ", it is part of Journey " + LegIsPartOfJourney + "!\n[click OK to see/edit this Journey, Cancel to skip]"
+        if (confirm(theStr)) {
+            window.open("./showjourneys.html?id=" + LegIsPartOfJourney);
         }
-    }
-    if (canDelete) {
+        UI.SetMessage("Deletion of Leg cancelled. Click in map or table to alter selection...", workflowMsg);
+    } else {
         const theStr = `Are you REALLY sure you want to delete this Leg [id=${ID}]?\nThis action can NOT be undone!`;
         if (confirm(theStr)) {
             if (await DB.deleteLeg(ID)) { //removed from DB
@@ -437,8 +426,6 @@ async function deleteLeg(theLegs, ID) {
                 UI.SetMessage("Deletion of Leg failed. Click in map or table to alter selection...", workflowMsg);
             }
         }
-    } else {
-        UI.SetMessage("Deletion of Leg cancelled. Click in map or table to alter selection...", workflowMsg);
     }
 }
 

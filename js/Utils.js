@@ -156,6 +156,7 @@ async function updateWhereStr(tableName, colNames) {
     return theWhereStr;
 }
 
+
 /*-- **************************** -*/
 /*-- User Interface Functions  -*/
 /*-- **************************** -*/
@@ -165,6 +166,13 @@ function reuseDateTime() {
     return confirm(theStr);
 }
 
+function showLegOfJourney(theLegID) {
+    window.open("./showlegs.html?id=" + theLegID);
+}
+
+function showJourneyOfLeg(theJourneyID) {
+    window.open("./showjourneys.html?id=" + theJourneyID);
+}
 
 // ***********
 // Load Search Form and wait for it to be submitted
