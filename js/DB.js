@@ -1,8 +1,8 @@
 /**
- * DB.js:
+ * CLASS DB:
  *
  * Functionality to access a Postgres DB through REST
- * Uses the Postgrest-client.js and  assumes PostgREST running on port 30000
+ * Uses the Postgrest-client.js and  assumes PostgREST running on port 3000
  *
  * Licensed under a Creative Commons Attribution-NonCommercial-ShareAlike 3.0 License.
  * see http://creativecommons.org/licenses/by-nc-sa/3.0/
@@ -29,18 +29,32 @@ DB = {
     }
     ,
     giveErrorMsg: function (resultJSON) {
-        let errStr = undefined;
+        let errStr = '';
         if (resultJSON.data.message != null) errStr += "\n" + resultJSON.data.message;
         if (resultJSON.data.code != null) errStr += " [" + resultJSON.data.code + "].";
         if (resultJSON.data.details != null) errStr += "\n" + resultJSON.data.details;
         if (resultJSON.data.hint != null) errStr += "\n" + resultJSON.data.hint;
-        if (errStr === undefined) errStr = "\n" + resultJSON.data;
-        UI.SetMessage("ERROR in DB module:" + errStr, errorMsg);
+        if (errStr === '') errStr = "\n" + resultJSON.data;
+        UI.SetMessage("ERROR in DB module: " + errStr, errorMsg);
+    }
+    ,
+    loadTypesFromDB: async function (typesTable) {
+        let typesFound = [];
+        let postUrl = '/' + typesTable + '?select=id,name&order=id&';
+        let resultJSON = await this.query("GET", postUrl);
+        if (resultJSON.error === true) {
+            this.giveErrorMsg(resultJSON);
+        } else {
+            for (let typeFound of resultJSON.data) {
+                typesFound.push(typeFound);
+            }
+            UI.SetMessage(typesFound.length + " types loaded from DB table '" + typesTable + "'.", workflowMsg);
+            return typesFound;
+        }
     }
     ,
     addStopIfNew: async function (theStop) {
-        let postUrl = undefined;
-        postUrl = '/stops' + '?select=count()&id=eq.' + parseInt(theStop.id);
+        let postUrl = '/stops' + '?select=count()&id=eq.' + parseInt(theStop.id);
         let resultJSON = await this.query("GET", postUrl);
         if (resultJSON.error === true) {
             this.giveErrorMsg(resultJSON);
@@ -53,7 +67,7 @@ DB = {
                     return true;
                 }
             } else {
-                UI.SetMessage("Used exisiting stop " + theStop.name + " [" + theStop.id + "]", workflowMsg);
+                UI.SetMessage("Using exisiting stop " + theStop.name + " [" + theStop.id + "]", workflowMsg);
                 return false;
             }
         }
@@ -95,6 +109,21 @@ DB = {
         }
     }
     ,
+    deleteJourney: async function (ID) {
+        try {
+            let postUrl = '/journeys?id=eq.' + ID;
+            let resultJSON = await this.query("DELETE", postUrl);
+            if (resultJSON.error === true) {
+                this.giveErrorMsg(resultJSON);
+                return false;
+            } else {
+                return true;
+            }
+        } catch (e) {
+            UI.SetMessage("ERROR in deleteJourney function in DB module:\n " + e, errorMsg);
+        }
+    }
+    ,
     deleteStop: async function (ID) {
         try {
             let postUrl = '/stops?id=eq.' + ID;
@@ -106,16 +135,16 @@ DB = {
                 return true;
             }
         } catch (e) {
-            UI.SetMessage("ERROR in delStop function in DB module:\n " + e, errorMsg);
+            UI.SetMessage("Unexpected ERROR in delStop function in DB module:\n " + e, errorMsg);
         }
     }
     ,
     addLeg: async function (theLeg) {
-        let postObjStr = ''; let postObj = undefined;
+        let postObjStr = '';
         try {
             let postUrl = '/legs';
             let geojsonStr = JSON.stringify(theLeg.geometry, null, 0);
-            postObjStr = `{ "name": "${theLeg.name}", "notes": "${theLeg.notes}", "type": "${theLeg.type}", "startdatetime": "${theLeg.startDateTime}", "enddatetime": "${theLeg.endDateTime}", "stopfrom": ${theLeg.stopFrom.id}, "stopto": ${theLeg.stopTo.id}, "geojson": ${geojsonStr} }`;
+            postObjStr = `{ "notes": "${theLeg.notes}", "type": "${theLeg.type}", "startdatetime": "${theLeg.startDateTime}", "enddatetime": "${theLeg.endDateTime}", "stopfrom": ${theLeg.stopFrom.id}, "stopto": ${theLeg.stopTo.id}, "geojson": ${geojsonStr} }`;
             let postObj = JSON.parse(postObjStr);
             if (theLeg.startDateTime === '') {
                 postObj.startdatetime = null;
@@ -123,8 +152,6 @@ DB = {
             if (theLeg.endDateTime === '') {
                 postObj.enddatetime = null;
             }
-            // console.log(postObjStr);
-            // console.log(postObj);
             let resultJSON = await this.query("POST", postUrl, postObj);
             if (resultJSON.error === true) {
                 this.giveErrorMsg(resultJSON);
@@ -137,13 +164,36 @@ DB = {
         }
     }
     ,
+    addJourney: async function (theJourney) {
+        let postObjStr = '';
+        try {
+            let postUrl = '/journeys';
+            postObjStr = `{ "notes": "${theJourney.notes}", "type": "${theJourney.type}", "startdatetime": 
+                "${theJourney.startDateTime}", "enddatetime": "${theJourney.endDateTime}", "stopfrom": ${theJourney.stopFrom.id}, 
+                "stopto": ${theJourney.stopTo.id}, "legsarray": "{${theJourney.legsIDArray}}" }`;
+            let postObj = JSON.parse(postObjStr);
+            console.log(postObjStr);
+            // console.log(postObj);
+            let resultJSON = await this.query("POST", postUrl, postObj);
+            if (resultJSON.error === true) {
+                this.giveErrorMsg(resultJSON);
+                return false;
+            } else {
+                return true;
+            }
+        } catch (e) {
+            UI.SetMessage("ERROR in addJourney function in DB module:\n " + e, errorMsg);
+        }
+    }
+    ,
     patchLeg: async function (theLeg, ID) {
-        let postObjStr;
+        let postObjStr='';
         try {
             let whereStr = '?id=eq.' + ID;
             let postUrl = '/legs' + whereStr;
             let geojsonStr = JSON.stringify(theLeg.geometry, null, 0);
-            postObjStr = `{ "name": "${theLeg.name}", "notes": "${theLeg.notes}", "type": "${theLeg.type}", "startdatetime": "${theLeg.startDateTime}", "enddatetime": "${theLeg.endDateTime}", "stopfrom": ${theLeg.stopFrom.id}, "stopto": ${theLeg.stopTo.id}, "geojson": ${geojsonStr} }`;
+            postObjStr = `{ "notes": "${theLeg.notes}", "type": "${theLeg.type}", "startdatetime": "${theLeg.startDateTime}", 
+                "enddatetime": "${theLeg.endDateTime}", "stopfrom": ${theLeg.stopFrom.id}, "stopto": ${theLeg.stopTo.id}, "geojson": ${geojsonStr} }`;
             let postObj = JSON.parse(postObjStr);
             if (theLeg.startDateTime === '') {
                 postObj.startdatetime = null;
@@ -165,8 +215,31 @@ DB = {
         }
     }
     ,
+    patchJourney: async function (theJourney, ID) {
+        let postObjStr='';
+        try {
+            let whereStr = '?id=eq.' + ID;
+            let postUrl = '/journeys' + whereStr;
+            postObjStr = `{ "notes": "${theJourney.notes}", "type": "${theJourney.type}", "startdatetime": 
+                "${theJourney.startDateTime}", "enddatetime": "${theJourney.endDateTime}", "stopfrom": ${theJourney.stopFrom.id}, 
+                "stopto": ${theJourney.stopTo.id}, "legsarray": "{${theJourney.legsIDArray}}" }`;
+            let postObj = JSON.parse(postObjStr);
+            let resultJSON = await this.query("PATCH", postUrl, postObj);
+            if (resultJSON.error === true) {
+                this.giveErrorMsg(resultJSON);
+                console.log(postObjStr);
+                return false;
+            } else {
+                return true;
+            }
+        } catch (e) {
+            UI.SetMessage("ERROR in patchjourney function in DB module:\n " + e, errorMsg);
+            console.log(postObjStr);
+        }
+    }
+    ,
     patchStop: async function (theStop, ID) {
-        let postObjStr;
+        let postObjStr='';
         try {
             let whereStr = '?id=eq.' + ID;
             let postUrl = '/stops' + whereStr;
@@ -189,7 +262,6 @@ DB = {
     ,
     query: async function (verb, url, json) {
         let result = {};
-        let error = {};
         try {
             if (verb === "GET") {
                 result = await this.PGapi.get(url);
@@ -200,7 +272,7 @@ DB = {
             } else if (verb === "DELETE") {
                 result = await this.PGapi.delete(url).auth(this.authToken);
             } else {
-                console.log('This can never happen, can it?');
+                console.log('[in DB.js] This can never happen, can it?');
             }
             // console.log("PGapi result = " + result);
             return {
@@ -222,5 +294,4 @@ DB = {
             }
         }
     }
-
 } //end DB object

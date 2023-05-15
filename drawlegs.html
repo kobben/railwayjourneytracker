@@ -1,0 +1,54 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+
+
+    <title>Construct Legs</title>
+
+    <!--  //load OpenLayers libs-->
+    <script src="lib/ol.js"></script>
+    <link href="lib/ol.css" rel="stylesheet">
+    <script src="lib/ol-layerswitcher.js"></script>
+    <link rel="stylesheet" href="lib/ol-layerswitcher.css" />
+
+    <!--  load app styles and javascript-->
+    <link href="css/style.css" rel="stylesheet">
+    <script src="lib/postgrest-client.min.js"></script>
+    <script src="lib/turf.min.js"></script>
+<!--    <script src="lib/jsts.min.js"></script>-->
+
+    <script src="js/DB.js"></script>
+    <script src="js/UI.js"></script>
+    <script src="js/Map.js"></script>
+    <script src="js/Utils.js"></script>
+    <script src="js/HTML.js"></script>
+    <script src="js/Models.js"></script>
+
+    <script src="js/drawlegs.js"></script>
+
+</head>
+<body onload="initDrawLegs();">
+<div id="flexwrapper">
+    <div id="mapDiv"></div>
+    <div id="menuDiv">
+        <table id="menubar">
+            <tr>
+                <td id="wfmsg">OSMrailways</td>
+                <td id="UI_workflow">
+                    <span id="UI_Buttons">
+                    <input type='button' class='bigbutton' id='action5Btn' value='ACTION5' style="display: none"/>
+                    <input type='button' class='bigbutton' id='action4Btn' value='ACTION4' style="display: none"/>
+                    <input type='button' class='bigbutton' id='action3Btn' value='ACTION3' style="display: none"/>
+                    <input type='button' class='bigbutton' id='action2Btn' value='ACTION2' style="display: none"/>
+                    <input type='button' class='bigbutton' id='action1Btn' value='ACTION1' style="display: none"/>
+                    </span>
+                    <input type='button' class='bigbutton' id='homeBtn' value='≡' onclick='window.location="./"'/>
+                </td>
+            </tr>
+        </table>
+    </div>
+    <div id="workflow"></div>
+</div>
+</body>
+</html>

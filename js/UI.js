@@ -19,12 +19,23 @@ const showMsg = 1;
 const hideMsg = 2;
 const dataMsg = 3;
 const workflowMsg = 4;
+const warningMsg = 5;
 
 let UI = {
 
     showHover: true
     ,
 
+    hideActionBtns: function () {
+        let placeholder = document.getElementById("UI_Buttons");
+        placeholder.style.display = "none";
+    }
+    ,
+    showActionBtns: function () {
+        let placeholder = document.getElementById("UI_Buttons");
+        placeholder.style.display = "inline";
+    }
+    ,
     resetActionBtns: function () {
         let placeholder = document.getElementById("UI_Buttons");
         let btnsHTML = "<input type='button' class='bigbutton' id='action6Btn' value='ACTION6' style='display: none'/>";
@@ -37,7 +48,7 @@ let UI = {
     }
     ,
 
-    InitMessages: function (debugOn) {
+    InitMessages: function (debugOn, workflowHTML='workflow') {
         UI.showDebugMessages = debugOn;
         // UI.appDiv = document.getElementsByTagName("body")[0];
         UI.appDiv = document.getElementById("mapDiv");
@@ -47,9 +58,10 @@ let UI = {
         UI.tooltipDiv.style.visibility = "hidden";
         UI.tooltipText = UI.tooltipDiv.appendChild(document.createElement("div"));
         UI.tooltipText.setAttribute("class", "tooltip-text");
+        UI.workflowPane = document.getElementById(workflowHTML);
+
     }
     ,
-
     SetMessage: function (messageStr, messageType, messageXY) {
         //first some checking and if necessary repairing:
         if (messageStr === undefined) { //no message:
@@ -61,7 +73,9 @@ let UI = {
             toolTipMove([cx, cy]);
             toolTipShow(messageStr);
         } else if (messageType === hideMsg) { //log message and hide messagebox
-            toolTipHide(messageStr);
+            toolTipHide();
+        } else if (messageType === warningMsg) { //Warning: display only in console
+            console.log(messageStr);
         } else if (messageType === errorMsg) { //Error: display Javascript alert
             alert(messageStr);
         } else if (messageType === dataMsg) { //data formatted in html
@@ -70,19 +84,15 @@ let UI = {
         } else if (messageType === workflowMsg) { //show in workflowMessages;
             let EL = document.getElementById("wfmsg");
             EL.innerHTML = messageStr;
-            // const cx = (UI.appDiv.clientWidth / 2) + UI.appDiv.offsetLeft - 24;
-            // const cy = (UI.appDiv.clientHeight / 2) + UI.appDiv.offsetTop - 12;
-            // toolTipMove([cx, cy]);
-            // toolTipShow(messageStr);
         }
-        if (UI.showDebugMessages && messageType !== dataMsg) {
-            // if debugOn, all messageTypes except dataMSg are also logged in console;
+        if (UI.showDebugMessages && messageType !== dataMsg && messageType !== hideMsg && messageType !== warningMsg) {
+            // if debugOn, all messageTypes except dataMsg/hideMsg are also logged in console;
             console.log(messageStr);
         }
     }
 }
 
-function toolTipMove(pixel) { // d contains data with x & y
+function toolTipMove(pixel) { // pixel contains data with x & y
     UI.tooltipDiv.style.left = (pixel[0] + 7) + "px";
     UI.tooltipDiv.style.top = (pixel[1] + 12) + "px";
 }

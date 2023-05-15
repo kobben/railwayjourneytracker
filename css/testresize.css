@@ -1,0 +1,29 @@
+:root {
+    /* declare as var because others are using it*/
+    /* NOTE: initMap() function will (re)set this */
+    --map-div-height: 450px;
+}
+html, body {
+    height: 99%;
+}
+div.wrapper {
+    width: 100%;
+    height: 100%;
+    display: flex;
+    flex-direction: column;
+}
+div.top, div.menu, div.bottom {
+    display: flex;
+    outline: solid 1px #ccc;
+    overflow: hidden;
+}
+div.top {
+    height:350px;
+    resize: vertical;
+}
+div.menu {
+    height:50px;
+}
+div.bottom {
+    flex: 1;
+}
