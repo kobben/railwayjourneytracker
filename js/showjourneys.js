@@ -34,6 +34,7 @@ async function initShowJourneys() {
 // ***********
 // ** step 1:
 // ***********
+        let startWithJourneyID = getURIParameterByName("id");
         let startAt = getURIParameterByName("start");
         if (startAt) {
             startAt = startAt.split(",");
@@ -57,6 +58,10 @@ async function initShowJourneys() {
 // ***********
 // ** step 2:
 // ***********
+        if (startWithJourneyID) {
+            let theWhereStr = 'id=eq.' + startWithJourneyID;
+            doJourneySearchAndShow(theWhereStr, true, true, true, null);
+        }
         showSearchJourneysForm(false, true, true);
         UI.SetMessage("Search for Journeys in DB...", workflowMsg);
         // ** wait for form to be submitted
