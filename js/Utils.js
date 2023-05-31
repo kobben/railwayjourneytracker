@@ -100,6 +100,10 @@ async function updateWhereStr(tableName, colNames) {
             if (theColName === "stopfrom" || theColName === "stopto") { // first find stopID's for the stop name provided...
                 let stopsIDList = "";
                 let findStopsStr = "";
+                /**
+                 * below is an ugly workaround for not being able to do or=() on embedded resources,
+                 * asking for stopto_obj embedded for further processing, and also stopto for searching in WhereStr:
+                 */
                 if (theOp === "equals") {
                     findStopsStr = "name=ilike." + theCol + "";
                 } else if (theOp === "contains") {
@@ -109,15 +113,30 @@ async function updateWhereStr(tableName, colNames) {
                 } else if (theOp === "endswith") {
                     findStopsStr = "name=ilike.*" + theCol + "";
                 } else {
-                    UI.SetMessage("Unknown Operator in function updateWhereStr()...!", errorMsg);
+                    UI.SetMessage("Unknown Operator in function changeWhere()...!", errorMsg);
                 }
                 let matchingStops = new StopsCollection();
-                await matchingStops.loadFromDB(findStopsStr); // 'where' uses PostGREST syntax, eg. notes=ilike.*interrail*
+                await matchingStops.loadFromDB(findStopsStr);
                 for (let aStop of matchingStops.getStops()) {
                     stopsIDList += aStop.id + ",";
                 }
                 stopsIDList = stopsIDList.substring(0, stopsIDList.length - 1); // remove , from last one...
                 theWhereStr += theColName + ".in.(" + stopsIDList + "),";
+                /**
+                 * below is what we'd prefer to do, but cannot beciase of postgrest not accepting this inside an or=():
+                 */
+                // if (theOp === "equals") {
+                //     findStopsStr = theColName +".name=ilike." + theCol + "";
+                // } else if (theOp === "contains") {
+                //     findStopsStr = theColName +".name=ilike.*" + theCol + "*";
+                // } else if (theOp === "beginswith") {
+                //     findStopsStr = theColName +".name=ilike." + theCol + "*";
+                // } else if (theOp === "endswith") {
+                //     findStopsStr = theColName +".name=ilike.*" + theCol + "";
+                // } else {
+                //     UI.SetMessage("Unknown Operator in function updateWhereStr()...!", errorMsg);
+                // }
+                // theWhereStr += findStopsStr + ",";
             } else { // all other colnames:
                 if (theOp === "equals") {
                     theWhereStr += theColName + ".ilike." + theCol + ",";

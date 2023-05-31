@@ -309,13 +309,22 @@ class LegsCollection {
     }
 
     async loadFromDB(whereStr = '', legStopsCollection = null) {
+        // get ALL journeys that ALL legs are in:
         let legsInJourneys = await DB.loadLegsInJourneysFromDB();
         let legsFound = [];
         let loadedLeg = undefined;
         let postUrl = '/legs?';
-        postUrl += 'select=id,startdatetime,enddatetime,timesequential,notes,type,stopfrom(id,name,geojson),stopto(id,name,geojson),geojson';
+        postUrl += 'select=id,startdatetime,enddatetime,timesequential,notes,type,geojson,';
+        /**
+         * below is an ugly workaround for not being able to do or=() on embedded resources,
+         * asking for stopto_obj embedded for further processing, and use stopto for searching in WhereStr:
+         */
+        postUrl += 'stopfrom_obj:stopfrom(id,name,geojson),stopto_obj:stopto(id,name,geojson),stopfrom,stopto';
+        /**
+         * we would prefer to simply do this:
+         */
+        // postUrl += 'stopfrom(id,name,geojson),stopto(id,name,geojson)';
         postUrl += '&order=startdatetime.desc.nullslast&' + whereStr;
-        // console.log(postUrl);
         let resultJSON = await DB.query("GET", postUrl);
         if (resultJSON.error === true) {
             DB.giveErrorMsg(resultJSON);
@@ -324,7 +333,7 @@ class LegsCollection {
                 if (legfound.geojson === null || legfound.geojson === undefined) {
                     UI.SetMessage('Skipped Leg object without valid geojson! ID = ' + legfound.id, warningMsg);
                 } else {
-                    loadedLeg = new Leg(legfound.id, undefined, legfound.stopfrom, legfound.stopto, legfound.startdatetime, legfound.enddatetime, legfound.notes, legfound.type, legfound.timesequential);
+                    loadedLeg = new Leg(legfound.id, undefined, legfound.stopfrom_obj, legfound.stopto_obj, legfound.startdatetime, legfound.enddatetime, legfound.notes, legfound.type, legfound.timesequential);
                     loadedLeg.selected = false;
                     loadedLeg.geometry = legfound.geojson;
                     loadedLeg.bbox = calcBbox(legfound.geojson.coordinates);
@@ -335,6 +344,7 @@ class LegsCollection {
                             }
                         }
                     }
+                    // get journeys that THIS leg is in:
                     for (let journeyJSON of legsInJourneys) {
                         if (journeyJSON.legsarray.includes(legfound.id)) loadedLeg.partofjourney = journeyJSON.id;
                     }
@@ -585,7 +595,16 @@ class JourneysCollection {
         let journeysFound = [];
         let loadedJourney = undefined;
         let postUrl = '/journeys?';
-        postUrl += 'select=id,notes,type,legsarray,stopfrom(id,name,geojson),stopto(id,name,geojson),startdatetime,enddatetime'; //NOTE legsarray = array of leg IDs!!
+        postUrl += 'select=id,notes,type,startdatetime,enddatetime,legsarray,'; //NOTE: legsarray = array of leg IDs, not Leg objects!!
+        /**
+         * below is an ugly workaround for not being able to do or=() on embedded resources,
+         * asking for stopto_obj embedded for further processing, and use stopto for searching in WhereStr:
+         */
+        postUrl += 'stopfrom_obj:stopfrom(id,name,geojson),stopto_obj:stopto(id,name,geojson),stopfrom,stopto';
+        /**
+         * we would prefer to simply do this:
+         */
+        // postUrl += 'stopfrom(id,name,geojson),stopto(id,name,geojson)';
         postUrl += '&order=startdatetime.desc.nullslast&' + whereStr;
         // console.log(postUrl);
         let resultJSON = await DB.query("GET", postUrl);
@@ -594,7 +613,7 @@ class JourneysCollection {
         } else {
             for (let aJourney of resultJSON.data) {
                     loadedJourney = new Journey(aJourney.id, aJourney.notes, aJourney.type, aJourney.legsarray,
-                        aJourney.stopfrom,aJourney.stopto,aJourney.startdatetime,aJourney.enddatetime);
+                        aJourney.stopfrom_obj,aJourney.stopto_obj,aJourney.startdatetime,aJourney.enddatetime);
                     await loadedJourney.loadJourneyLegsFromDB(); // necessary to get Leg geometries and stops from the LEGS table in DB
                     journeysFound.push(loadedJourney);
                     loadedJourney = undefined;

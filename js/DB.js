@@ -38,8 +38,9 @@ DB = {
         UI.SetMessage("ERROR in DB module: " + errStr, errorMsg);
     }
     ,
+    // if no Where supplied get ALL journeys that ALL legs are in
     loadLegsInJourneysFromDB: async function (theWhereStr = '') {
-        let postUrl = '/journeys?select=id,legsarray' + theWhereStr;
+        let postUrl = '/journeys?select=id,legsarray&' + theWhereStr;
         // console.log(postUrl);
         let resultJSON = await DB.query("GET", postUrl);
         if (resultJSON.error === true) {
@@ -65,13 +66,13 @@ DB = {
     }
     ,
     addStopIfNew: async function (theStop) {
-        let postUrl = '/stops' + '?select=count()&id=eq.' + parseInt(theStop.id);
+        let postUrl = '/stops' + '?&id=eq.' + parseInt(theStop.id);
         let resultJSON = await this.query("GET", postUrl);
         if (resultJSON.error === true) {
             this.giveErrorMsg(resultJSON);
             return false;
         } else {
-            if (resultJSON.data[0].count === 0) {
+            if (resultJSON.data.length === 0) { // no items found
                 let stopAdded = await DB.addStop(theStop.id, theStop.name, theStop.geometry);
                 if (stopAdded) {
                     UI.SetMessage("Created stop " + theStop.name + " [" + theStop.id + "]", workflowMsg);

@@ -17,11 +17,11 @@ SPDX-License-Identifier: GPL-3.0-only
 #### Links to libraries and software used:
 * OpenStreetMap Overpass API: https://wiki.openstreetmap.org/wiki/Overpass_API
 * PostgreSQL database: https://www.postgresql.org
-* PostGREST REST interface to DB: https://postgrest.org
+* PostGREST REST interface to DB (11.0.1): https://postgrest.org
 * OpenLayers webmapping API (v7.2.2): https://openlayers.org 
 * OpenLayers LayerSwitcher plugin: https://github.com/walkermatt/ol-layerswitcher/
 * JSTS library (2.3.0) of spatial predicates and functions for processing geometry: https://github.com/bjornharrtell/jsts
-* TURF Modular, simple-to-understand JavaScript functions that speak GeoJSON: https://turfjs.org
+* TURF (6.5.0), simple-to-understand JavaScript functions that speak GeoJSON: https://turfjs.org
 
 #### Changelist:
     v1.0 May 2023 Extensive refactoring to:
