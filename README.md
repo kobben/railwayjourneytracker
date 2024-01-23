@@ -7,7 +7,7 @@ This is a WebApp for keeping track of railway journeys. It lets you extract GeoJ
 It stores them in a DB (separately as **Legs**, i.e travelled lines, and their end and start **Stops**, i.e station points, and as **Journeys** which are a collection of Legs that together form a journey). It stores the data in a PostGreSQL DB, so is only needing OSM connection when creating legs and stops from the OSM DB.
 The PostGREST REST interface to the Postgres DB is used by this purely Javascript (ECMA 5 compliant) application running on any modern browser (basically anything other then old Internet Explorer).
 
-### [Code available on GitHub](https://github.com/kobben/railwayjourneytracker)
+### [Code available on Gitlab](https://gitlab.utwente.nl/kobben/railwayjourneytracker)
 
 Licensed under GNU General Public License v3.0 (see https://choosealicense.com/licenses/gpl-3.0/)
 
