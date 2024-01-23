@@ -14,9 +14,7 @@ let APP = {
     map: undefined,
     stops : undefined,
     restart: function () {
-        const curZoom = APP.map.mapView.getZoom();
-        const curCenter = ol.proj.transform(APP.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
-        window.location = "./" + APP.url + "?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom;
+        openURLwithCurrentLocation(APP.url);
     }
 };
 
@@ -31,7 +29,7 @@ async function initShowStops() {
             startAt = startAt.split(",");
             APP.map = MAP.init("ShowStopsMap", [startAt[0], startAt[1]], startAt[2], selectClickedStop); //start loc from URIparams
         } else {
-            APP.map = MAP.init("ShowStopsMap",[6.89, 52.22], 11, selectClickedStop);  //startloc = Enschede
+            APP.map = MAP.init("ShowStopsMap",[6.89, 52.22], 10, selectClickedStop);  //startloc = Enschede
         }
         APP.map.StopStyle = MAP.stopStyleBlue;
         APP.map.StopSelectedStyle = MAP.stopStyleRed;
@@ -149,7 +147,7 @@ function displayStopsInTable(theStops, doFilter=false) {
         let editBtn = document.getElementById("edit_" + aStop.id);
         if (editBtn) { // only for those not filtered out!
             editBtn.addEventListener("click", function () {
-                editStop(theStops, aStop.id, htmlElem);
+                editStop(theStops, aStop.id);
             });
         }
     }

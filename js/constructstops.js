@@ -17,9 +17,7 @@ let APP = {
     newStops: undefined,
     osmClicked: undefined, //need this to be global
     restart: function () {
-        const curZoom = APP.map.mapView.getZoom();
-        const curCenter = ol.proj.transform(APP.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
-        window.location = "./" + APP.url + "?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom;
+        openURLwithCurrentLocation(APP.url);
     }
 };
 
@@ -34,7 +32,7 @@ async function initConstructStops() {
             startAt = startAt.split(",");
             APP.map = MAP.init("ContructStopsMap", [startAt[0], startAt[1]], startAt[2], findOSMstop); //start loc from URIparams
         } else {
-            APP.map = MAP.init("ContructStopsMap",[6.89, 52.22], 11, findOSMstop);  //startloc = Enschede
+            APP.map = MAP.init("ContructStopsMap",[6.89, 52.22], 10, findOSMstop);  //startloc = Enschede
         }
         APP.map.StopStyle = MAP.stopStyleBlue;
         APP.map.StopSelectedStyle = MAP.stopStyleRed;

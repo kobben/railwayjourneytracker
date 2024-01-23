@@ -28,6 +28,7 @@ MAP = {
     lineStyleRed: undefined,
     lineStyleGreen: undefined,
     lineStyleGrey: undefined,
+    lineStyleNone: undefined,
     StopStyle: undefined,
     StopSelectedStyle: undefined,
     LegStyle: undefined,
@@ -42,16 +43,19 @@ MAP = {
         let _mapObj, _mapView; //local versions
         _mapObj = new ol.Map({target: "mapDiv"});
         const osmLayer = new ol.layer.Tile({
+            name: 'OSM',
             title: 'OSM Standard', //title is needed for layerswitcher
             type: 'base', //type is needed for layerswitcher
             source: new ol.source.OSM()
         });
         const noBase = new ol.layer.Tile({ //empty base layer for 'none'
+            name: 'None',
             title: 'None', //title is needed for layerswitcher
             type: 'base', //type is needed for layerswitcher
         });
         const transportOSMKey = "d4674680716f4dc7b9e5228f66cd360c";
         const osmTransportLayer = new ol.layer.Tile({
+            name: 'OSMTransport',
             title: 'OSM Transport', //title is needed for layerswitcher
             type: 'base', //type is needed for layerswitcher
             source: new ol.source.OSM({
@@ -103,7 +107,8 @@ MAP = {
                     color: 'rgba(0, 0, 0, 0)',
                     width: 0,
                 })
-            })
+            }),
+            zIndex:1,
         });
         const stopStyleRed = new ol.style.Style({
             image: new ol.style.Circle({
@@ -114,7 +119,7 @@ MAP = {
                 stroke: new ol.style.Stroke({
                     color: 'rgba(255, 0, 0, 0.9)',
                     width: 2,
-                })
+                }),
             }),
             text: new ol.style.Text({
                 font: 'bold 12px "Open Sans", "Arial Unicode MS", "sans-serif"',
@@ -130,6 +135,7 @@ MAP = {
                     width: 4,
                 }),
             }),
+            zIndex:999,
         });
         const stopStyleGreen = new ol.style.Style({
             image: new ol.style.Circle({
@@ -140,7 +146,7 @@ MAP = {
                 stroke: new ol.style.Stroke({
                     color: 'rgba(17,116,41,0.8)',
                     width: 2,
-                })
+                }),
             }),
             text: new ol.style.Text({
                 font: 'bold 12px "Open Sans", "Arial Unicode MS", "sans-serif"',
@@ -154,8 +160,9 @@ MAP = {
                 stroke: new ol.style.Stroke({
                     color: 'white',
                     width: 4,
-                }),
+                })
             }),
+            zIndex:200,
         });
         const stopStyleBlue = new ol.style.Style({
             image: new ol.style.Circle({
@@ -182,30 +189,42 @@ MAP = {
                     width: 4,
                 }),
             }),
+            zIndex:100,
         });
         const lineStyleBlue = new ol.style.Style({
             stroke: new ol.style.Stroke({
                 color: 'rgba(0, 0, 255, 0.5)',
                 width: 5,
-            })
+            }),
+            zIndex:100,
         });
         const lineStyleRed = new ol.style.Style({
             stroke: new ol.style.Stroke({
                 color: 'rgba(255,0,0,0.7)',
                 width: 7,
-            })
+            }),
+            zIndex:900,
         });
         const lineStyleGrey = new ol.style.Style({
             stroke: new ol.style.Stroke({
                 color: 'rgb(10,170,170)',
                 width: 5,
-            })
+            }),
+            zIndex:999,
+        });
+        const lineStyleNone = new ol.style.Style({
+            stroke: new ol.style.Stroke({
+                color: 'rgba(0, 0, 0, 0)',
+                width: 0,
+            }),
+            zIndex:1,
         });
         const lineStyleGreen = new ol.style.Style({
             stroke: new ol.style.Stroke({
                 color: 'rgba(1,224,1,0.6)',
                 width: 5,
-            })
+            }),
+            zIndex:200,
         });
         let newLegsMapsLayer = new ol.layer.Vector({
             name: 'NewLegs',
@@ -365,6 +384,7 @@ MAP = {
         this.lineStyleRed = lineStyleRed;
         this.lineStyleGreen = lineStyleGreen;
         this.lineStyleGrey = lineStyleGrey;
+        this.lineStyleNone = lineStyleNone;
         return this;
     } // end MAP.init()
     ,

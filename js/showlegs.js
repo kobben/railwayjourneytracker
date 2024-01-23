@@ -1,8 +1,9 @@
 // ***************************************************************//
 // SHOWLEGS
 // this APP lets you search Legs in a DB, edit/update, and delete them.
+// since v2 also lets you collect Legs into a Journey
 //
-// v1.0  May 2023, see README.md for details
+// v2.0 16 Dec 2023, see README.md for details
 // ***************************************************************//
 //
 // we create a global APP obj here:
@@ -16,10 +17,10 @@ let APP = {
     legstops: undefined, //these are the stops that are end- or startpoint of the selected legs
     legs: undefined,
     legtypes: undefined,
+    journeys: undefined,
+    journeytypes: undefined,
     restart: function () {
-        const curZoom = APP.map.mapView.getZoom();
-        const curCenter = ol.proj.transform(APP.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
-        window.location = "./" + APP.url + "?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom;
+        openURLwithCurrentLocation(APP.url);
     }
 };
 
@@ -29,7 +30,8 @@ async function initShowLegs() {
     UI.SetMessage("Initializing showLegs APP...", workflowMsg);
     const authToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoid2ViX2FjY2VzcyJ9.faLSEypbd-MDlb6r6zDG6iAdCKgthe6lHML3zEziVRw";
     if (await DB.init('http://localhost:3000', authToken)) {
-        APP.legtypes = await DB.loadTypesFromDB('legtypes'); // 'where' uses PostGREST syntax, eg. notes=ilike.*interrail*
+        APP.legtypes = await DB.loadTypesFromDB('legtypes');
+        APP.journeytypes = await DB.loadTypesFromDB('journeytypes');
         // ***********
         // ** step 1:
         // ***********
@@ -39,7 +41,7 @@ async function initShowLegs() {
             startAt = startAt.split(",");
             APP.map = MAP.init("ShowLegsMap", [startAt[0], startAt[1]], startAt[2], selectClickedLeg); //loc from params
         } else {
-            APP.map = MAP.init("ShowLegsMap", [6.89, 52.22], 11, selectClickedLeg);  //Enschede
+            APP.map = MAP.init("ShowLegsMap", [6.89, 52.22], 10, selectClickedLeg);  //Enschede
         }
         APP.map.StopStyle = MAP.stopStyleBlue;
         APP.map.StopSelectedStyle = MAP.stopStyleRed;
@@ -51,6 +53,7 @@ async function initShowLegs() {
         APP.map.displayLayer("Journeys", false);
         // create datastructures needed later:
         APP.legs = new LegsCollection(APP.map.getLayerDataByName("Legs"));
+        APP.journeys = new JourneysCollection(APP.map.getLayerDataByName("Journeys"));
         APP.legstops = new StopsCollection(APP.map.getLayerDataByName("Stops"));
         APP.allstops = new StopsCollection(APP.map.getLayerDataByName("NewStops")); // if mapped, then on NewStops layer!
         await APP.allstops.loadFromDB(''); //empty WhereStr makes that ALL stops are loaded.
@@ -110,6 +113,12 @@ async function initShowLegs() {
         TruncateBtn.addEventListener("click", function () {
             truncateSelectedLeg();
         });
+        let CollectBtn = document.getElementById("action6Btn");
+        CollectBtn.value = 'Collect selected Legs into Journey';
+        CollectBtn.style.display = "inline";
+        CollectBtn.addEventListener("click", function () {
+            collectIntoJourney(APP.legs.getLegs().filter(aLeg => aLeg.selected));
+        });
     } else {
         UI.SetMessage("Could not initialise DB connection.", errorMsg);
     }
@@ -149,9 +158,9 @@ function copySelectedLeg() {
             let tmpLeg;
             let tmpID = 5555555; // will be changed by Postgres to serial ID
             if (reuseDateTime()) {
-                tmpLeg = new Leg(tmpID, leg1.geometry.coordinates, leg1.stopFrom, leg1.stopTo, leg1.startDateTime, leg1.endDateTime, copyNote, leg1.type, leg1.timesequential);
+                tmpLeg = new Leg(tmpID, leg1.geometry.coordinates, leg1.stopFrom, leg1.stopTo, leg1.startDateTime, leg1.endDateTime, copyNote, leg1.type, leg1.timesequential, leg1.km);
             } else {
-                tmpLeg = new Leg(tmpID, leg1.geometry.coordinates, leg1.stopFrom, leg1.stopTo, '', '', copyNote, leg1.type, false);
+                tmpLeg = new Leg(tmpID, leg1.geometry.coordinates, leg1.stopFrom, leg1.stopTo, '', '', copyNote, leg1.type, false, leg1.km);
             }
             APP.legs.selectLegs(0); // unselect all legs
             tmpLeg.bbox = calcBbox(tmpLeg.geometry.coordinates);
@@ -175,9 +184,9 @@ function reverseSelectedLeg() {
             let tmpLeg;
             let tmpID = 666666; // will be changed by Postgres to serial ID
             if (reuseDateTime()) {
-                tmpLeg = new Leg(tmpID, leg1.geometry.coordinates, leg1.stopTo, leg1.stopFrom, leg1.startDateTime, leg1.endDateTime, reverseNote, leg1.type, leg1.timesequential);
+                tmpLeg = new Leg(tmpID, leg1.geometry.coordinates, leg1.stopTo, leg1.stopFrom, leg1.startDateTime, leg1.endDateTime, reverseNote, leg1.type, leg1.timesequential, leg1.km);
             } else {
-                tmpLeg = new Leg(tmpID, leg1.geometry.coordinates, leg1.stopTo, leg1.stopFrom, '', '', reverseNote, leg1.type, false);
+                tmpLeg = new Leg(tmpID, leg1.geometry.coordinates, leg1.stopTo, leg1.stopFrom, '', '', reverseNote, leg1.type, false, leg1.km);
             }
             APP.legs.selectLegs(0); // unselect all legs
             tmpLeg.bbox = calcBbox(tmpLeg.geometry.coordinates);
@@ -207,7 +216,7 @@ function truncateSelectedLeg() {
             selectFromMenu.addEventListener("change", function () {
                 APP.allstops.selectStops(0); // all off
                 stopFromID = parseInt(selectFromMenu.value);
-                APP.allstops.selectStops(stopFromID);
+                APP.allstops.selectStops(stopFromID, true);
                 // also keep highlighting stopTo if already chosen!
                 if (stopToID) APP.allstops.selectStops(stopToID);
             });
@@ -215,7 +224,7 @@ function truncateSelectedLeg() {
             selectToMenu.addEventListener("change", function () {
                 APP.allstops.selectStops(0); // all off
                 stopToID = parseInt(selectToMenu.value);
-                APP.allstops.selectStops(stopToID);
+                APP.allstops.selectStops(stopToID, true);
                 // also keep highlighting stopFrom if already chosen!
                 if (stopFromID) APP.allstops.selectStops(stopFromID);
             });
@@ -256,9 +265,9 @@ function doTruncateLeg(originalLeg, stopFromID, stopToID) {
     let tmpLeg;
     let tmpID = 121212; // will be changed by Postgres to serial ID
     if (reuseDateTime()) {
-        tmpLeg = new Leg(tmpID, originalLeg.geometry.coordinates, undefined, undefined, originalLeg.startDateTime, originalLeg.endDateTime, copyNote, originalLeg.type, originalLeg.timesequential);
+        tmpLeg = new Leg(tmpID, originalLeg.geometry.coordinates, undefined, undefined, originalLeg.startDateTime, originalLeg.endDateTime, copyNote, originalLeg.type, originalLeg.timesequential, undefined);
     } else {
-        tmpLeg = new Leg(tmpID, originalLeg.geometry.coordinates, undefined, undefined, '', '', copyNote, originalLeg.type, false);
+        tmpLeg = new Leg(tmpID, originalLeg.geometry.coordinates, undefined, undefined, '', '', copyNote, originalLeg.type, false, undefined);
     }
     //first get stop objects from DB
     let stopFromAdded = false;
@@ -356,9 +365,9 @@ function doMerge(leg1, leg2, mergedGeom) {
     let tmpLeg;
     let tmpID = 888888; // will be changed by Postgres to serial ID
     if (reuseDateTime()) {
-        tmpLeg = new Leg(tmpID, mergedGeom, leg1.stopFrom, leg2.stopTo, leg1.startDateTime, leg2.endDateTime, mergeNote, leg1.type, leg1.timesequential);
+        tmpLeg = new Leg(tmpID, mergedGeom, leg1.stopFrom, leg2.stopTo, leg1.startDateTime, leg2.endDateTime, mergeNote, leg1.type, leg1.timesequential, undefined);
     } else {
-        tmpLeg = new Leg(tmpID, mergedGeom, leg1.stopFrom, leg2.stopTo, '', '', mergeNote, leg1.type, false);
+        tmpLeg = new Leg(tmpID, mergedGeom, leg1.stopFrom, leg2.stopTo, '', '', mergeNote, leg1.type, false, undefined);
     }
     showTmpGeomOnMap(tmpLeg.geometry.coordinates);
     UI.SetMessage("Merged Legs.", workflowMsg);
@@ -378,6 +387,11 @@ function editLeg(theLegs, ID) {
                 // console.log(legTypes[i].id  + " : " + aLeg.type+ " : " + i);
                 if (parseInt(APP.legtypes[i].id) === aLeg.type) document.getElementById("col_type").selectedIndex = i;
             }
+            if (aLeg.timesequential) {
+                document.getElementById("col_timesequential").selectedIndex = 1;
+            } else {
+                document.getElementById("col_timesequential").selectedIndex = 0;
+            }
             let SaveBtn = document.getElementById("SaveBtn");
             SaveBtn.addEventListener("click", async function () {
                 aLeg.startDateTime = document.getElementById("leg_startdatetime").value;
@@ -385,6 +399,7 @@ function editLeg(theLegs, ID) {
                 // aLeg.name = escapeStr(document.getElementById("leg_name").value);
                 aLeg.notes = escapeStr(document.getElementById("leg_notes").value, true);
                 aLeg.type = parseInt(document.getElementById("col_type").value);
+                aLeg.timesequential = document.getElementById("col_timesequential").value;
                 if (await DB.patchLeg(aLeg, ID)) {
                     // RELOAD from DB
                     doLegsSearchAndShow(theLegs.getWhereStr(), displayTable = true, displayMap = true, zoomToExtent = false);
@@ -436,4 +451,106 @@ function showTmpGeomOnMap(geom) {
     tmpLeg.bbox = calcBbox(tmpLeg.geometry.coordinates);
     tmpLeg.showOnMap(APP.map.getLayerDataByName("NewLegs"));
     MAP.zoomToBbox(tmpLeg.bbox);
+}
+
+async function collectIntoJourney(selectedLegs) {
+    if (selectedLegs === undefined || selectedLegs.length < 1) {
+        UI.SetMessage("Need at least 1 Leg...!", errorMsg);
+    } else {
+        UI.SetMessage("Collecting legs...", workflowMsg);
+        // check if any leg is sequential time type:
+        if (selectedLegs.some(function (aLeg) { return aLeg.timesequential })) {
+            UI.SetMessage("One or more Legs use(s) Sequential Time. Cannot create Journeys from such legs...!", errorMsg);
+        } else {
+            // sort Legs  ascending by startDateTime
+            selectedLegs.sort(function (a, b) {
+                const dt1 = new Date(a.startDateTime)
+                const dt2 = new Date(b.startDateTime)
+                return dt1 - dt2;
+            });
+            for (let aLeg of selectedLegs) { aLeg.selected = false;}
+
+            UI.SetMessage("Collected Legs. Save Journey or Redo...", workflowMsg);
+            let journeyNotes = '[collected notes from legs:]\n';
+            for (let aLeg of selectedLegs) {
+                journeyNotes += aLeg.notes + '\n';
+            }
+            let legIDs = selectedLegs.map(aLeg => aLeg.id);
+            let stopFrom = selectedLegs[0].stopFrom;
+            let stopTo = selectedLegs[selectedLegs.length-1].stopTo;
+            let startDateTime = selectedLegs[0].startDateTime;
+            let endDateTime = selectedLegs[selectedLegs.length-1].endDateTime;
+
+            let tmpJourney = new Journey(123456789, journeyNotes, 0, legIDs, stopFrom, stopTo, startDateTime, endDateTime);
+            await tmpJourney.loadJourneyLegsFromDB(); // needed to load Legs into it
+
+            MAP.zoomToBbox(tmpJourney.calculateBbox());
+            tmpJourney.showOnMap(APP.map.getLayerDataByName("Journeys"));
+            APP.journeys.addJourney(tmpJourney);
+            showSaveJourneyForm(tmpJourney);
+        }
+    }
+}
+
+
+function showSaveJourneyForm(theJourney) {
+    UI.SetMessage("Edit properties and save...", workflowMsg);
+    UI.hideActionBtns();
+    APP.map.displayLayer("Journeys", true); //temporarily show it to show results
+    // if dates are NULL in DB, show them as empty string in form;
+    if (theJourney.startDateTime === null || theJourney.startDateTime === 'null') theJourney.startDateTime = '';
+    if (theJourney.endDateTime === null || theJourney.endDateTime === 'null') theJourney.endDateTime = '';
+    UI.workflowPane.innerHTML = HTML.editJourneyForm(theJourney);
+    for (let i=0; i < APP.journeytypes.length; i++) {
+        if (parseInt(APP.journeytypes[i].id) === theJourney.type) document.getElementById("col_type").selectedIndex = i;
+    }
+    let SaveBtn = document.getElementById("SaveBtn");
+    SaveBtn.addEventListener("click", async function () {
+        theJourney.notes = escapeStr(document.getElementById("journey_notes").value, true);
+        theJourney.type = parseInt(document.getElementById("col_type").value);
+        if (await DB.addJourney(theJourney) ) {
+            UI.workflowPane.innerHTML = '';
+            theJourney.removeFromMap(APP.map.getLayerDataByName("Journeys"));
+            APP.journeys.removeJourney(theJourney);
+            //redo legs search to get table again:
+            doLegsSearchAndShow(APP.legs.getWhereStr(), true, true, true, null, false);
+            UI.showActionBtns(); // to enable New DB search again
+            UI.SetMessage("Saved Journey. Select Legs or search for Legs in DB...", workflowMsg);
+            // now will be at step 4 again: waiting for click in the map...
+        } else {
+            theJourney.removeFromMap(APP.map.getLayerDataByName("Journeys"));
+            APP.journeys.removeJourney(theJourney);
+            //redo legs search to get table again.
+            doLegsSearchAndShow(APP.legs.getWhereStr(), true, true, true, null, false);
+            APP.map.displayLayer("Journeys", false); //off again
+            UI.showActionBtns();
+            UI.SetMessage("Saving Journey FAILED. Click in map or table to alter selection...", workflowMsg);
+        }
+    });
+    let CancelBtn = document.getElementById("CancelBtn");
+    CancelBtn.addEventListener("click", function () {
+        theJourney.removeFromMap(APP.map.getLayerDataByName("Journeys"));
+        APP.journeys.removeJourney(theJourney);
+        //redo legs search to get table again.
+        doLegsSearchAndShow(APP.legs.getWhereStr(), true, true, true, null, false);
+        APP.map.displayLayer("Journeys", false); //off again
+        UI.showActionBtns();
+
+        UI.SetMessage("Cancelled. Click in map or table to alter selection...", workflowMsg);
+    });
+}
+
+
+function highlightLegOfJourney(theJourneyID, theLegID, highlight) {
+    let theLeg = APP.journeys.getJourneyById(theJourneyID).getLegsCollection().getLegById(theLegID);
+    if (highlight) {
+        theLeg.selected = !theLeg.selected;
+        let X = document.getElementById("btn_" + theLegID).getBoundingClientRect().right - 10;
+        let Y = document.getElementById("btn_" + theLegID).getBoundingClientRect().top - 170;
+        UI.SetMessage(HTML.journeyLegInfoPopup(theLeg), dataMsg, [X, Y]);
+    } else {
+        theLeg.selected = !theLeg.selected;
+        UI.SetMessage(' ', hideMsg, null);
+    }
+    theLeg.selectOnMap(theLeg.selected, APP.map.getLayerDataByName("Journeys"));
 }

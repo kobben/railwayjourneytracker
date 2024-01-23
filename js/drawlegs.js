@@ -19,9 +19,7 @@ let APP = {
     legs: undefined,
     legtypes: undefined,
     restart: function () {
-        const curZoom = APP.map.mapView.getZoom();
-        const curCenter = ol.proj.transform(APP.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
-        window.location = "./" + APP.url + "?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom;
+        openURLwithCurrentLocation(APP.url);
     }
 };
 
@@ -42,7 +40,7 @@ async function initDrawLegs() {
         } else {
             // Enschede = [6.89, 52.22], 11
             // Frankfurt = [8.64, 50.08], 11
-            APP.map = MAP.init("DrawLegsMap", [8.64, 50.08], 12, null, true);
+            APP.map = MAP.init("DrawLegsMap", [6.89, 52.22], 10, null, true);
         }
         APP.map.StopStyle = MAP.stopStyleBlue;
         APP.map.StopSelectedStyle = MAP.stopStyleRed;
@@ -142,6 +140,7 @@ function chooseStopsForDrawing() {
     });
     UI.showActionBtns();
 }
+
 /// TWO utility functions to allow choosing from and to staps from Stops
 //  existing in DB, using the pulldown menu created in HTML.createStopsOptions()
 function pickFromStop(id, name) {
@@ -160,7 +159,6 @@ function pickFromStop(id, name) {
         APP.fromStop = theFromStop;
         APP.fromStop.selectOnMap(true, APP.map.getLayerDataByName("Stops"));
     }
-
 }
 function pickToStop(id, name) {
     let theToStop;

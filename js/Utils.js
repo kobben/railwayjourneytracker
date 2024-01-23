@@ -34,17 +34,24 @@ async function queryOSM(query, outType) {
     const outCmd = " out " + outType + ";";
     let url = OverPassUrl + jsonFormat + query + outSet + outCmd;
     // console.log(url);
-    const response = await fetch(url);
-    if (response.ok) { // if HTTP-status is 200-299
-        // get the response body
-        let json = await response.json();
-        document.body.style.cursor = "auto";
-        return json; // make function return true:
-    } else {
-        let jsonStr =  `{"succes": false, "status": ${response.status}, "statusText": "${response.statusText}" }`;
-        let json = JSON.parse(jsonStr);
-        document.body.style.cursor = "auto";
-        return json; // make function return false
+
+    try {
+        const response = await fetch(url);
+        if (response.ok) { // if HTTP-status is 200-299
+            // get the response body
+            let json = await response.json();
+            document.body.style.cursor = "auto";
+            return json; // make function return true:
+        } else {
+            let jsonStr = `{"succes": false, "status": ${response.status}, "statusText": "${response.statusText}" }`;
+            let json = JSON.parse(jsonStr);
+            document.body.style.cursor = "auto";
+            return json; // make function return false
+        }
+    } catch (e) {
+        const messageStr ="UNEXPECTED Error querying OSM OverPass: [" + e + "] "
+            + "\nDO YOU WANT TO RETRY...?";
+        succes = !confirm(messageStr);
     }
 }
 
@@ -55,6 +62,12 @@ async function queryOSM(query, outType) {
 function getURIParameterByName(name) {
     let regex = new RegExp("[\\?&]" + name + "=([^&#]*)"), results = regex.exec(window.location.search);
     return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
+}
+
+function openURLwithCurrentLocation(theURL) {
+    const curZoom = APP.map.mapView.getZoom();
+    const curCenter = ol.proj.transform(APP.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
+    window.open(theURL + "?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom);
 }
 
 // to escape quotes, tabs, newlines in strings and text fields
@@ -76,6 +89,8 @@ function escapeStr(theStr, alsoNewlines = true, limitLength = 0) {
     }
     return Str;
 }
+
+
 
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
 // changes the WHERE statement for a PG_REST call, based on choices from HTML Forms,
@@ -123,7 +138,7 @@ async function updateWhereStr(tableName, colNames) {
                 stopsIDList = stopsIDList.substring(0, stopsIDList.length - 1); // remove , from last one...
                 theWhereStr += theColName + ".in.(" + stopsIDList + "),";
                 /**
-                 * below is what we'd prefer to do, but cannot beciase of postgrest not accepting this inside an or=():
+                 * below is what we'd prefer to do, but cannot because of postgrest not accepting this inside an or=():
                  */
                 // if (theOp === "equals") {
                 //     findStopsStr = theColName +".name=ilike." + theCol + "";
@@ -215,7 +230,7 @@ function showSearchLegsForm(withSkipBtn = false, displayTable = true, displayMap
     let SearchBtn = document.getElementById("SearchBtn");
     SearchBtn.addEventListener("click", async function () {
         let theWhereStr = await updateWhereStr('legs',
-            ['id', 'stopfrom', 'stopto', 'notes', 'startdatetime', 'enddatetime', 'timesequential', 'type']);
+            ['id', 'km', 'stopfrom', 'stopto', 'notes', 'startdatetime', 'enddatetime', 'timesequential', 'type']);
         let zoomToExtent = document.getElementById("zoomtoextent").checked;
         doLegsSearchAndShow(theWhereStr, displayTable, displayMap, zoomToExtent, doNextStep, editable);
     });
@@ -227,8 +242,6 @@ function showSearchLegsForm(withSkipBtn = false, displayTable = true, displayMap
 // returns APP.legs and APP.legstops
 async function doLegsSearchAndShow(theWhereStr, displayTable = true, displayMap = true,
                                    zoomToExtent = true, doNextStep = null, editable = true) {
-    // APP.legs = new LegsCollection(APP.map.getLayerDataByName("Legs"));
-    // APP.legstops = new StopsCollection(APP.map.getLayerDataByName("Stops"));
     await APP.legs.loadFromDB(theWhereStr, APP.legstops);
     if (displayMap) APP.legs.mapLegs(APP.legstops, zoomToExtent);
     if (displayTable) {

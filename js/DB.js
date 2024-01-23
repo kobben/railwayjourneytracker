@@ -156,7 +156,7 @@ DB = {
         try {
             let postUrl = '/legs';
             let geojsonStr = JSON.stringify(theLeg.geometry, null, 0);
-            postObjStr = `{ "notes": "${theLeg.notes}", "type": "${theLeg.type}", "startdatetime": "${theLeg.startDateTime}", "enddatetime": "${theLeg.endDateTime}", "stopfrom": ${theLeg.stopFrom.id}, "stopto": ${theLeg.stopTo.id}, "geojson": ${geojsonStr} }`;
+            postObjStr = `{ "notes": "${theLeg.notes}", "type": "${theLeg.type}", "startdatetime": "${theLeg.startDateTime}", "enddatetime": "${theLeg.endDateTime}", "stopfrom": ${theLeg.stopFrom.id}, "stopto": ${theLeg.stopTo.id}, "geojson": ${geojsonStr}  }`;
             let postObj = JSON.parse(postObjStr);
             if (theLeg.startDateTime === '') {
                 postObj.startdatetime = null;
@@ -204,8 +204,7 @@ DB = {
             let whereStr = '?id=eq.' + ID;
             let postUrl = '/legs' + whereStr;
             let geojsonStr = JSON.stringify(theLeg.geometry, null, 0);
-            postObjStr = `{ "notes": "${theLeg.notes}", "type": "${theLeg.type}", "startdatetime": "${theLeg.startDateTime}", 
-                "enddatetime": "${theLeg.endDateTime}", "stopfrom": ${theLeg.stopFrom.id}, "stopto": ${theLeg.stopTo.id}, "geojson": ${geojsonStr} }`;
+            postObjStr = `{ "notes": "${theLeg.notes}", "type": "${theLeg.type}", "startdatetime": "${theLeg.startDateTime}", "enddatetime": "${theLeg.endDateTime}", "timesequential": "${theLeg.timesequential}", "stopfrom": ${theLeg.stopFrom.id}, "stopto": ${theLeg.stopTo.id}, "geojson": ${geojsonStr} , "km": ${theLeg.km} }`;
             let postObj = JSON.parse(postObjStr);
             if (theLeg.startDateTime === '') {
                 postObj.startdatetime = null;

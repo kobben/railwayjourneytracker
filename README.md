@@ -4,9 +4,8 @@
 
 This is a WebApp for keeping track of railway journeys. It lets you extract GeoJSON entities 
 (Journey Stops and Legs) from OSM public transport data (and some other sources). 
-It stores them in a DB (separately as **Legs**, i.e travelled lines, and their end and start **Stops**, i.e station points, and as **Journeys** which are a collection of Legs that together form a journey). It stores the data in a PostGreSQL DB, so is only needing OSM when creating new legs.
-The PostGREST REST interface to the Postgres DB is used by this purely Javascript (ECMA 5 compliant) application running on any modern browser
-(basically anything other then old Internet Explorer).
+It stores them in a DB (separately as **Legs**, i.e travelled lines, and their end and start **Stops**, i.e station points, and as **Journeys** which are a collection of Legs that together form a journey). It stores the data in a PostGreSQL DB, so is only needing OSM connection when creating legs and stops from the OSM DB.
+The PostGREST REST interface to the Postgres DB is used by this purely Javascript (ECMA 5 compliant) application running on any modern browser (basically anything other then old Internet Explorer).
 
 ### [Code available on GitHub](https://github.com/kobben/railwayjourneytracker)
 
@@ -14,26 +13,38 @@ Licensed under GNU General Public License v3.0 (see https://choosealicense.com/l
 
 SPDX-License-Identifier: GPL-3.0-only
 
-#### Links to libraries and software used:
+#### Services that this software needs to connect to:
+* OpenStreetMap, through the Overpass API: https://wiki.openstreetmap.org/wiki/Overpass_API
+* PostgreSQL database: https://www.postgresql.org
+#### JS Libraries used:
 * OpenStreetMap Overpass API: https://wiki.openstreetmap.org/wiki/Overpass_API
 * PostgreSQL database: https://www.postgresql.org
 * PostGREST REST interface to DB (11.0.1): https://postgrest.org
 * OpenLayers webmapping API (v7.2.2): https://openlayers.org 
-* OpenLayers LayerSwitcher plugin: https://github.com/walkermatt/ol-layerswitcher/
+* OpenLayers LayerSwitcher plugin (4.1.1) : https://github.com/walkermatt/ol-layerswitcher/
 * JSTS library (2.3.0) of spatial predicates and functions for processing geometry: https://github.com/bjornharrtell/jsts
 * TURF (6.5.0), simple-to-understand JavaScript functions that speak GeoJSON: https://turfjs.org
 
 #### Changelist:
-    v1.0 May 2023 Extensive refactoring to:
-      - move functionality of Stops, Legs, Journeys to model CLASSes
+    v1.2 Dec 2023
+       - in `truncateLeg`, selecting stop in pull-down zooms to it.
+       - moved 'collect legs into journey' to `showlegs.js`.
+    v1.1 Oct 2023
+      - added km column to legs table and Model.
+      - created TRIGGERs in DB to automatically calculate stops.geom, legs.geom & legs.
+        km when needed.
+    v1.0 May 2023 
+      Extensive refactoring to:
+      - move functionality to Models.js: CLASSes Stop, StopsCollection, Leg, LegsCollection,
+        Journey, JourneysCollection and OSMrelation 
       - move all DB, UI, MAP and HTML functionality to their respective OBJECTs 
         in separate JS files
     v0.8 Dec 2022 
       - adding Journey support [several Legs forming 1 journey from 
         origin to destination]   
-      - removed .name parameter from Legs object.
+      - removed name parameter from Legs object.
     v0.7 Aug 2022 
-      - added import leg from geoJSON option
+      - added importLeg from geoJSON option
       - added filterLegs() to displayLegsInTable(): un/filter table on selection
       - moved ZoomTo button to table header
       - using encodeURIComponent(theCol) to provide for searches 
@@ -43,8 +54,8 @@ SPDX-License-Identifier: GPL-3.0-only
       - now using createStopsOptions() in HTML forms
     v0.5 Jan 2022 
       - added TruncateLeg
-      - all modules now start with loading legs step  
-      - doConstructLeg now also finds tram, subway & ferry routes
+      - all modules now start with loading legs step (if relevant) 
+      - doConstructLeg now also finds lightrail & ferry routes
       - added RefreshStops to dynamically change stops menus
       - added proper LayerSwitcher (using Matt Walker's code)
       - removed various bugs

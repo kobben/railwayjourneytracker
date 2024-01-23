@@ -55,7 +55,7 @@
 
 <table>
   <tr>
-    <td colspan="2"><textarea name="getUrl" id="getUrl" cols="100" rows="3" wrap="soft">/legs?select=id,name,stopfrom(id,name,geojson),stopto(id,name,geojson)&name=neq.test
+    <td colspan="2"><textarea name="getUrl" id="getUrl" cols="100" rows="3" wrap="soft">/legs?select=id,stopfrom(id,name,geojson),stopto(id,name,geojson),startdatetime, enddatetime,type,notes&or=(notes.ilike.*velbert*)
     </textarea></td>
     <td><input class="bigbutton" type="button" id="getBtn" value="GET" onclick="getDB();"/></td>
   </tr>
@@ -67,7 +67,7 @@
   </tr>
   <tr>
     <td><textarea name="patchUrl" id="patchUrl" cols="19" rows="3" wrap="soft">/legs?id=eq.9999999</textarea></td>
-    <td><textarea name="patchObj" id="patchObj" cols="78" rows="3" wrap="soft">{ "name": "test2" }</textarea>
+    <td><textarea name="patchObj" id="patchObj" cols="78" rows="3" wrap="soft">{ "notes": "test2" }</textarea>
     </td>
     <td><input class="bigbutton" type="button" id="patchBtn" value="PATCH" onclick="patchDB();"/></td>
   </tr>

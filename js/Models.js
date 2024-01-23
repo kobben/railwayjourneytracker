@@ -190,7 +190,8 @@ class StopsCollection {
         }
     }
 
-    selectStops(id = 0) {  // id is either a stop ID, or 0 for unselect all, 1 for select all
+    selectStops(id = 0, zoomto = false)  {
+
         if (this.mapLayer === null) {
             UI.SetMessage('Warning: trying to map non-mappable layer!', warningMsg, null);
         } else {
@@ -204,7 +205,7 @@ class StopsCollection {
                         aStop.selected = !aStop.selected;
                     }
                 }
-                aStop.selectOnMap(aStop.selected, this.mapLayer);
+                aStop.selectOnMap(aStop.selected, this.mapLayer, zoomto);
                 let isRowInTable = document.getElementById("select_" + aStop.id);
                 if (isRowInTable) isRowInTable.checked = aStop.selected;
             }
@@ -270,7 +271,7 @@ class Stop {
         }
     }
 
-    selectOnMap(selected, mapLayer) {
+    selectOnMap(selected, mapLayer, zoomto = false) {
         if (!this.mapped) { // if not mapped yet, map it first
             this.showOnMap(mapLayer);
         }
@@ -280,6 +281,15 @@ class Stop {
                 if (selected) {
                     f.set('selected', true);
                     this.selected = true;
+                    if (zoomto) {
+                        let myBbox = [
+                            this.geometry.coordinates[1]-0.0025,
+                            this.geometry.coordinates[0]-0.0025,
+                            this.geometry.coordinates[1]+0.0025,
+                            this.geometry.coordinates[0]+0.0025
+                            ];
+                        APP.map.zoomToBbox(myBbox);
+                    }
                 } else {
                     f.set('selected', false);
                     this.selected = false;
@@ -314,7 +324,7 @@ class LegsCollection {
         let legsFound = [];
         let loadedLeg = undefined;
         let postUrl = '/legs?';
-        postUrl += 'select=id,startdatetime,enddatetime,timesequential,notes,type,geojson,';
+        postUrl += 'select=id,startdatetime,enddatetime,timesequential,notes,type,geojson,km,';
         /**
          * below is an ugly workaround for not being able to do or=() on embedded resources,
          * asking for stopto_obj embedded for further processing, and use stopto for searching in WhereStr:
@@ -348,6 +358,7 @@ class LegsCollection {
                     for (let journeyJSON of legsInJourneys) {
                         if (journeyJSON.legsarray.includes(legfound.id)) loadedLeg.partofjourney = journeyJSON.id;
                     }
+                    loadedLeg.km = legfound.km;
                     legsFound.push(loadedLeg);
                     loadedLeg = undefined;
                 }
@@ -449,7 +460,7 @@ class LegsCollection {
 
     selectLegs(id = 0) { // id is either a leg ID, or 0 for unselect all, 1 for select all
         if (this.mapLayer === null) {
-            UI.SetMessage('Warning: trying to map non-mappable layer!', warningMsg, null);
+            UI.SetMessage('Warning: trying to select on non-mappable layer!', warningMsg, null);
         } else {
             for (let aLeg of this.legsarray) {
                 if (id === 0) { // 0 => all off
@@ -476,7 +487,7 @@ class LegsCollection {
 // a Leg of a Journey = one train from boarding stop to disembarking stop
 // ***************************************************************//
 class Leg {
-    constructor(id, coords, stopFrom, stopTo, startDateTime, endDateTime, notes, type, timesequential) {
+    constructor(id, coords, stopFrom, stopTo, startDateTime, endDateTime, notes, type, timesequential, km) {
         this.id = id;
         this.geometry = { // simple GeoJSON Linestring geometry [[lon,lat],[lon,lat],...]
             type: "LineString",
@@ -493,6 +504,11 @@ class Leg {
         this.selected = false; // selector boolean used later in mapping and other selections
         this.mapped = false; // selector boolean used later in mapping and other selections
         this.partofjourney = undefined;
+        this.km = km;
+    }
+
+    getID() {
+        return this.id;
     }
 
     toOlFeature() {
@@ -510,6 +526,7 @@ class Leg {
             notes: this.notes,
             selected: this.selected,
             mapped: this.mapped,
+            km: this.km,
         });
     }
 
@@ -526,7 +543,8 @@ class Leg {
                 type: this.type,
                 timesequential: this.timesequential,
                 stopfrom: this.stopFrom.id,
-                stopto: this.stopTo.id
+                stopto: this.stopTo.id.stopto,
+                km: this.km,
             }
         }
     }
@@ -565,6 +583,8 @@ class Leg {
                 } else {
                     if (mapLayer === APP.map.getLayerDataByName("Legs")) {
                         f.setStyle(MAP.LegStyle);
+                    } else if (mapLayer === APP.map.getLayerDataByName("NewLegs")) {
+                        f.setStyle(MAP.LegStyle);
                     } else { // on "Journeys" maplayer
                         f.setStyle(MAP.JourneyStyle);
                     }
@@ -596,6 +616,7 @@ class JourneysCollection {
         let loadedJourney = undefined;
         let postUrl = '/journeys?';
         postUrl += 'select=id,notes,type,startdatetime,enddatetime,legsarray,'; //NOTE: legsarray = array of leg IDs, not Leg objects!!
+
         /**
          * below is an ugly workaround for not being able to do or=() on embedded resources,
          * asking for stopto_obj embedded for further processing, and use stopto for searching in WhereStr:
@@ -605,6 +626,7 @@ class JourneysCollection {
          * we would prefer to simply do this:
          */
         // postUrl += 'stopfrom(id,name,geojson),stopto(id,name,geojson)';
+
         postUrl += '&order=startdatetime.desc.nullslast&' + whereStr;
         // console.log(postUrl);
         let resultJSON = await DB.query("GET", postUrl);

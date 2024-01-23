@@ -38,7 +38,8 @@ let UI = {
     ,
     resetActionBtns: function () {
         let placeholder = document.getElementById("UI_Buttons");
-        let btnsHTML = "<input type='button' class='bigbutton' id='action6Btn' value='ACTION6' style='display: none'/>";
+        let btnsHTML = "";
+        btnsHTML += "<input type='button' class='bigbutton' id='action6Btn' value='ACTION6' style='display: none'/>";
         btnsHTML += "<input type='button' class='bigbutton' id='action5Btn' value='ACTION5' style='display: none'/>";
         btnsHTML += "<input type='button' class='bigbutton' id='action4Btn' value='ACTION4' style='display: none' />";
         btnsHTML += "<input type='button' class='bigbutton' id='action3Btn' value='ACTION3' style='display: none' />";
@@ -59,7 +60,7 @@ let UI = {
         UI.tooltipText = UI.tooltipDiv.appendChild(document.createElement("div"));
         UI.tooltipText.setAttribute("class", "tooltip-text");
         UI.workflowPane = document.getElementById(workflowHTML);
-
+        UI.resetActionBtns();
     }
     ,
     SetMessage: function (messageStr, messageType, messageXY) {

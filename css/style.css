@@ -141,6 +141,7 @@ table {
     border-collapse: collapse;
     background-color: #FFFFFF;
 }
+
 tr {
     background-color: #FFFFFF;
 }
@@ -151,13 +152,10 @@ th {
     background-color: rgb(56, 75, 88);
     color: #FFFFFF;
     text-align: left;
-    padding-right: 3px;
-    padding-left: 3px;
-    padding-bottom: 9px;
-    padding-top: 8px;
+    padding-right:15px;
 }
 td {
-    padding: 3px;
+    padding-right: 15px;
 }
 #leg_details {
     margin: 15px;
@@ -196,7 +194,7 @@ td.menu:hover {
 
 /*extras for scrollable tables with fixed header:*/
 table.tableFixHead {
-    width: 100%;
+    /*width: 100%;*/
     overflow-y: auto;
 }
 .tableFixHead thead tr th {
@@ -206,7 +204,6 @@ table.tableFixHead {
 
 /*extras for tables for input forms:*/
 .tableInput {
-    padding: 3px;
 }
 .tableInput th {
     background-color: rgb(56, 75, 88);
@@ -226,14 +223,14 @@ table.selector {
     background-color: #FFFFFF;
 }
 tr.selector:hover {
-    background-color: #0000FF;
+    background-color: #888888;
     color: #FFFFFF;
 }
 tr.selector:nth-child(even) {
     background-color: #EEEEEE;
 }
 tr.selector:nth-child(even):hover {
-    background-color: #0000FF;
+    background-color: #888888;
     color: #FFFFFF;
 }
 th.selector {

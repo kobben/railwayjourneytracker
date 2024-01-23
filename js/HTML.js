@@ -309,9 +309,6 @@ HTML = {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
     drawLegForm: function (DBStops) {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
-        const curZoom = APP.map.mapView.getZoom();
-        const curCenter = ol.proj.transform(APP.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
-        const constructStopLink = "./constructstops.html?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom;
         let html = '';
         html += `
 <table >
@@ -324,34 +321,31 @@ HTML = {
     <td> 
         <table > 
             <tr>
-            <td><b>CHOOSE START FROM STOPS IN DB:</b></td>   
+            <td><b>Choose START from stops in DB:</b></td>   
             </tr>
             <tr><td>
             <select id='menu_from'>
-            ${HTML.createStopsOptions(DBStops, true)}</select><br/>
-            If stops not in DB, first create them using the APP<br/>
-            <a href="${constructStopLink}" target="_blank">
-            'Get Stop from OSM or Create new Stop'</a><br/>
-             and then return and click Refresh Stops...
+            ${this.createStopsOptions(DBStops, true)}</select>
             </td></tr>
         </table> 
     </td>   
     <td>
         <table >
             <tr>
-            <td><b>CHOOSE END FROM STOPS IN DB:</b></td>   
+            <td><b>Choose END from stops in DB:</b></td>   
             </tr>
               <tr><td>
             <select id='menu_to' >
-            ${this.createStopsOptions(DBStops, true)}</select><br/>
-            If stops not in DB, first create them using the APP<br/>
-            <a href="${constructStopLink}" target="_blank">
-            'Get Stop from OSM or Create new Stop'</a><br/>
-             and then return and click Refresh Stops...
+            ${this.createStopsOptions(DBStops, true)}</select>
             </td></tr>
         </table>
     </td>
     </tr>
+    <tr><td colspan="2">
+            If stop not in DB, first create it:
+            <button type="button" onclick="openURLwithCurrentLocation('./constructstops.html');">Get Stop from OSM or Create new Stop</button><br/>
+             and then return here and click Refresh Stops...
+    </td></tr>
 
 </table>
 `;
@@ -421,7 +415,20 @@ HTML = {
     <td>
         <input id="col_id" name="id" type="number"  > 
     </td>
-    <td colspan="6"></td>
+    <td class="colname">km:
+    </td>
+    <td>
+        <select name="op_km" id="op_km"  >
+            <option value="=" selected>=</option>
+            <option value="<" >&lt</option>
+            <option value=">">&gt;</option>
+            <option value="<>">&ne;</option>
+        </select>
+    </td>
+    <td>
+        <input id="col_km" name="id" type="number"  > 
+    </td>
+    <td colspan=3"></td>
 </tr>
 <tr >
     <td class="colname">From:</td>
@@ -771,7 +778,7 @@ HTML = {
         return `
 <table class="tableInput">
         <tr >
-            <th colspan="4" style="text-align: right">
+            <th colspan="5" style="text-align: right">
                 <button id="CancelBtn" class="bigbutton">Cancel</button> 
                 <button id="SaveBtn" class="bigbutton">SAVE CHANGES</button> 
             </th>
@@ -782,7 +789,8 @@ HTML = {
             <td class="colname">Type:</td>
             <td>
                 ${this.createTypesMenu(APP.legtypes, false)}
-            </td>
+            </td> 
+            <td></td>
         </tr>
         <tr >
             <td class="colname">From:
@@ -794,35 +802,42 @@ HTML = {
             <td>
                 ${theLeg.stopTo.name} [${theLeg.stopTo.id}] 
             </td>
+             <td></td>
         </tr>
         <tr >
             <td class="colname">Start:
             </td>
             <td>
                 <input id="leg_startdatetime" name="startdatetime" type="text" size="20" 
-                maxLength="20" value="${theLeg.startDateTime}" ></td>
+                maxLength="20" value="${theLeg.startDateTime}" >  [YYYY-MM-DDThh:mm]</td>
+                 
             <td class="colname">End: </td>
             <td>
                 <input id="leg_enddatetime" name="enddatetime" type="text" size="20" 
                 maxLength="20" value="${theLeg.endDateTime}" >
-                 [YYYY-MM-DDThh:mm]
+            </td>
+            <td>
+               Sequential: 
+                <select id="col_timesequential" name="timesequential"  >
+                    <option value="false" >false</option>
+                    <option value="true">true</option>
+                </select>
             </td>
         </tr>      
         <tr >
             <td  class="colname">Notes: </td>
-            <td colspan="3">
-                <textarea cols="75" rows="3" id="leg_notes" name="notes" wrap="soft">${theLeg.notes}</textarea> 
+            <td colspan="4">
+                <textarea cols="80" rows="3" id="leg_notes" name="notes" wrap="soft">${theLeg.notes}</textarea> 
             </td>
         </tr>
         <tr >
             <td  class="colname">Geometry:</td>
             <td colspan="3">
-<!--                <a onClick="alert('Cannot edit JSON...')"> -->
-                ${escapeStr(JSON.stringify(theLeg.geometry), true).slice(0, 120) + ' ...'}
-<!--                </a> -->
+                ${escapeStr(JSON.stringify(theLeg.geometry), true).slice(0, 95) + ' ...'}
             </td>
+            <td class="colname">Km: ${theLeg.km}</td>
         </tr>
-        <tr ><td colspan="4"></td></tr>
+        <tr ><td colspan="5"></td></tr>
        </table>
 `; // do NOT forget closing `; !!
     }
@@ -903,7 +918,7 @@ HTML = {
             if (!filter || aStop.selected) {
                 // rows created below get clickable btns with unique IDs that get an AddEventListener in main cade
                 html += `  
-<tr>
+<tr class="selector">
 	<td>${aStop.id}</td>
 	<td>${aStop.name}</td>
 	<td><input type="checkbox" id="select_${aStop.id}" ${aStop.selected ? 'checked' : ''} /></td>
@@ -935,7 +950,7 @@ HTML = {
             if (!filter || aJourney.selected) {
                 // rows created below get clickable btns with unique IDs that get an AddEventListener in main cade
                 html += `  
-<tr>
+<tr class="selector">
 	<td>${aJourney.id}</td>
 	<td>${aJourney.stopFrom.name}</td>
 	<td>${aJourney.stopTo.name}</td>
@@ -962,7 +977,7 @@ HTML = {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
         let html = `
 <table class="tableFixHead"><thead>
-<tr><th>ID</th><th>From</th><th>To</th><th>Start</th><th>End</th><th>Seq.</th><th>Type</th><th>Notes</th><th>In Journey</th>
+<tr><th>ID</th><th>From</th><th>To</th><th>Km</th><th>Start</th><th>End</th><th>Seq.</th><th>Type</th><th>Notes</th><th>In Journey</th>
 <th>Select:</th><th style="text-align: center"><input type="button" style="height:20px;width:60px" id="selectNone" value="none"/><br>
 <input type="button" style="height:20px;width:60px" id="selectAll" value="all"/></th>
 <th style="text-align: center"><input type="button" style="height:20px;width:60px" id="zoomTo" value="zoomto"/><br>
@@ -973,10 +988,11 @@ HTML = {
             if (!filter || aLeg.selected) {
                 // rows created below get clickable btns with unique IDs that get an AddEventListener in main cade
                 html += `  
-<tr>
+<tr class="selector">
 	<td>${aLeg.id}</td>
 	<td>${aLeg.stopFrom.name}</td>
 	<td>${aLeg.stopTo.name}</td>
+	<td>${aLeg.km}</td>
 	<td>${(aLeg.startDateTime === '' || aLeg.startDateTime === 'null') ? '-' : HTML.formatDateTime(aLeg.startDateTime)}</td>
 	<td>${(aLeg.endDateTime === '' || aLeg.endDateTime === 'null') ? '-' : HTML.formatDateTime(aLeg.endDateTime)}</td>
 	<td>${(aLeg.timesequential) ? '<span style="font-size: 1.5em">✓︎︎</span>' : ''}</td>
@@ -991,7 +1007,7 @@ HTML = {
 `;
             }
         }
-        html += '</tr><tr><th colspan="12"></th></tr></table>';
+        html += '</tr><tr><th colspan="13"></th></tr></table>';
         return html;
     }
 //+++++++++++++++++++++++++++++++++++++++++++++++++++

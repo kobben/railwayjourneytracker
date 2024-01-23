@@ -20,9 +20,7 @@ let APP = {
     candidatelegs: undefined, //used for temp set of legs to choose from (eg in constructLineManually()
     legtypes: undefined,
     restart: function () {
-        const curZoom = APP.map.mapView.getZoom();
-        const curCenter = ol.proj.transform(APP.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
-        window.location = "./" + APP.url + "?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom;
+        openURLwithCurrentLocation(APP.url);
     }
 };
 
@@ -43,14 +41,12 @@ async function initConstructLegs() {
         } else {
             // Enschede = [6.89, 52.22], 11
             // Frankfurt = [8.64, 50.08], 11
-            APP.map = MAP.init("ShowLegsMap", [8.64, 50.08], 12, findOSMrelation, true);
+            APP.map = MAP.init("ShowLegsMap", [6.89, 52.22], 10, findOSMrelation, true);
         }
         APP.map.StopStyle = MAP.stopStyleBlue;
         APP.map.StopSelectedStyle = MAP.stopStyleRed;
         APP.map.LegStyle = MAP.lineStyleBlue;
         APP.map.LegSelectedStyle = MAP.lineStyleRed;
-        APP.map.JourneyStyle = MAP.lineStyleGrey;
-        APP.map.JourneySelectedStyle = MAP.lineStyleRed;
         APP.map.displayLayer("openRailwayMap", false);
         APP.map.displayLayer("Journeys", false);
         // create datastructures needed later:
@@ -221,7 +217,7 @@ function showChosenRelation(json) {
     MAP.zoomToBbox(APP.OSMrelation.bbox);
 
     let relationGeom = extractLineFromMultiline(routeGeom, true);
-    // after this the realationGeom is either created automatically => conmtinue with setting Stops
+    // after this the realationGeom is either created automatically => continue with setting Stops
     // or remains undefined => the UI is switched into an alternative workflow of manually merging the parts...
 
     if (relationGeom !== undefined) { // now continue finding the stops to use:
@@ -229,10 +225,10 @@ function showChosenRelation(json) {
         evaluateStops(APP.OSMrelation.relStops);
     } else {
         // this happens if at first there is no relationGeom, and when switched to manual construction...
-        UI.SetMessage('Undefined relationGeom, trying manual construction...', workflowMsg);
+        UI.SetMessage('Manual construction: Click in map to select/unselect parts of the route...', workflowMsg);
     }
 }
-// seperated this a a function because we need to call it from constructLineManually()
+// seperated this as a function because we need to call it from constructLineManually()
 // to switch back into the normal workflow
 function evaluateStops(relStops) {
     const numStops = relStops.length;
@@ -444,16 +440,15 @@ function extractLineFromMultiline(geom, automatic = true) {
 
     } else if (mergedLineStrings.array.length > 1) {
         // ***********
-        // More linestrings found, now we have to manually
+        // after automatic merging >1 linestrings left, so we'll have to manually
         // choose an ordered set that can be used to create linestring Merge
-        let messageStr = "This route contains multiple line segments, which cannot be merged automatically.\n";
+        let messageStr = "This route [" + APP.OSMrelation.id + "] contains line segments which cannot be merged automatically.\n";
         if (automatic) { // give up automatic - try manually
-            messageStr += "You can try to create a Leg 'manually' using the appropriate App.\n";
-            messageStr += "If you click OK, you will be transferred there, with the current OSMrelationID [" + APP.OSMrelation.id + "] preset...";
+            messageStr += "\nYou can try to merge the Leg 'manually'.\n";
             if (confirm(messageStr)) {
                 // switches into the alternative workflow of manual construction :
                 constructLineManually(jsts_writer, mergedLineStrings);
-                // Will NOT return here, but after successfull merging will call my mother function again: extractLineFromMultiline()
+                // Will NOT return here, but after successfull merging will call its 'mother' function again: extractLineFromMultiline()
             } else {
                 return undefined;
             }
@@ -489,7 +484,6 @@ function constructLineManually(jsts_writer, jstsLineStrings) {
     APP.candidatelegs.mapLegs(null, true);
     let mergedGeom = undefined;
 
-    UI.SetMessage("Click in map to select/unselect parts of the route...", workflowMsg);
     UI.resetActionBtns();
 
     let ZoomBtn = document.getElementById("action1Btn");
@@ -532,7 +526,7 @@ function constructLineManually(jsts_writer, jstsLineStrings) {
     AcceptBtn.style.display = "none";
     AcceptBtn.addEventListener("click", function () {
         APP.OSMrelation.geometry.coordinates = mergedGeom;
-        // No switch back into normal workflow with choosing of stops:
+        // Now switch back into normal workflow with choosing of stops:
         UI.resetActionBtns();
         APP.map.changeClickCallback(selectClickedLeg,findOSMrelation);
         evaluateStops(APP.OSMrelation.relStops);

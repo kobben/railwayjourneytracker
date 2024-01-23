@@ -1,14 +1,14 @@
 // ***************************************************************//
-// SHOWJOURNEYS
-// this APP lets you search Journeys in a DB, edit/update, and delete them.
+// ANIMTEJOURNEYS
+// this APP lets you search Journeys in a DB, and then animate them in various ways.
 //
-// v1.0  May 2023, see README.md for details
+// v1.1  June 2023, see README.md for details
 // ***************************************************************//
 //
 // we create a global APP obj here:
 let APP = {
-    name: "showJourneys",
-    url: "showJourneys.html",
+    name: "animateJourneys",
+    url: "animateJourneys.html",
     // needed for postREST DB access:
     authToken: "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoid2ViX2FjY2VzcyJ9.faLSEypbd-MDlb6r6zDG6iAdCKgthe6lHML3zEziVRw",
     map: undefined,
@@ -24,11 +24,11 @@ let APP = {
 };
 
 /*-- Initialization function --*/
-async function initShowJourneys() {
+async function initAnimateJourneys() {
     UI.InitMessages(true);
     const authToken = "eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJyb2xlIjoid2ViX2FjY2VzcyJ9.faLSEypbd-MDlb6r6zDG6iAdCKgthe6lHML3zEziVRw";
     if (await DB.init('http://localhost:3000', authToken)) {
-        UI.SetMessage("Initializing show Journeys...", workflowMsg);
+        UI.SetMessage("Initializing AnimteJourneys...", workflowMsg);
 // ***********
 // ** step 1:
 // ***********
@@ -36,18 +36,23 @@ async function initShowJourneys() {
         let startAt = getURIParameterByName("start");
         if (startAt) {
             startAt = startAt.split(",");
-            APP.map = MAP.init("ShowJourneysMap", [startAt[0], startAt[1]], startAt[2], selectClickedJourney); //loc from params
+            APP.map = MAP.init("AnimateJourneysMap", [startAt[0], startAt[1]], startAt[2], null); //loc from params
         } else {
-            APP.map = MAP.init("ShowJourneysMap", [6.89, 52.22], 10, selectClickedJourney);  //Enschede
+            APP.map = MAP.init("AnimateJourneysMap", [6.89, 52.22], 10, null);  //Enschede
         }
         APP.map.StopStyle = MAP.stopStyleBlue;
         APP.map.StopSelectedStyle = MAP.stopStyleRed;
         APP.map.LegStyle = MAP.lineStyleBlue;
         APP.map.LegSelectedStyle = MAP.lineStyleRed;
-        APP.map.JourneyStyle = MAP.lineStyleBlue;
+        APP.map.JourneyStyle = MAP.lineStyleNone;
         APP.map.JourneySelectedStyle = MAP.lineStyleRed;
+        APP.map.displayLayer("OSM", false);
+        APP.map.displayLayer("OSMTransport", true);
         APP.map.displayLayer("openRailwayMap", false);
         APP.map.displayLayer("Legs", false);
+        APP.map.displayLayer("Stops", true);
+        APP.map.displayLayer("NewLegs", false);
+        APP.map.displayLayer("NewStops", false);
         APP.legtypes = await DB.loadTypesFromDB('legtypes');
         APP.journeytypes = await DB.loadTypesFromDB('journeytypes');
         APP.journeys = new JourneysCollection(APP.map.getLayerDataByName("Journeys"));
@@ -58,9 +63,9 @@ async function initShowJourneys() {
 // ***********
         if (startWithJourneyID) {
             let theWhereStr = 'id=eq.' + startWithJourneyID;
-            doJourneySearchAndShow(theWhereStr, true, true, true, null);
+            doJourneySearchAndShow(theWhereStr, false, true, true, null);
         }
-        showSearchJourneysForm(false, true, true);
+        showSearchJourneysForm(false, false, true);
         UI.SetMessage("Search for Journeys in DB...", workflowMsg);
         // ** wait for form to be submitted
         //  returns with APP.legs + APP.legstops set
@@ -78,7 +83,7 @@ async function initShowJourneys() {
                 APP.journeys = new JourneysCollection(APP.map.getLayerDataByName("Journeys"));
                 APP.map.getLayerDataByName("Journeys").clear();
                 APP.map.getLayerDataByName("Stops").clear();
-                showSearchJourneysForm(false,true, true);
+                showSearchJourneysForm(false,false, true);
                 UI.SetMessage("Search for Journeys in DB...", workflowMsg);
             }
         });
@@ -112,7 +117,7 @@ function selectClickedJourney(evt) {
 // Load Search Form and wait for it to be submitted
 // after submission in ==> doLegsSearchAndShow
 // ***********
-function showSearchJourneysForm(withSkipBtn = false, displayTable = true, displayMap = true, doNextStep = null) {
+function showSearchJourneysForm(withSkipBtn = false, displayTable = false, displayMap = true, doNextStep = null) {
     UI.workflowPane.innerHTML = HTML.searchJourneyForm(HTML.createTypesMenu(APP.journeytypes, true), withSkipBtn);
     if (withSkipBtn) {
         let SkipBtn = document.getElementById("SkipBtn");
@@ -131,7 +136,11 @@ function showSearchJourneysForm(withSkipBtn = false, displayTable = true, displa
     SearchBtn.addEventListener("click", async function () {
         let theWhereStr = await updateWhereStr('journeys', ['id','notes', 'type','stopfrom', 'stopto', 'startdatetime', 'enddatetime']);
         let zoomToExtent = document.getElementById("zoomtoextent").checked;
-        doJourneySearchAndShow(theWhereStr, displayTable, displayMap, zoomToExtent, doNextStep);
+        await doJourneySearchAndShow(theWhereStr, displayTable, displayMap, zoomToExtent, doNextStep);
+
+///*****************************************
+        animateJourneys();
+
     });
     // ** wait for form to be submitted, then next step  **//
 }
@@ -151,118 +160,50 @@ async function doJourneySearchAndShow(theWhereStr, displayTable = true, displayM
         UI.workflowPane.innerHTML = '';
     }
     if (doNextStep !== null) doNextStep.call();
+
+
+
 }
 
-function displayJourneysInTable(theJourneys, filter = false) {
-    UI.workflowPane.innerHTML = HTML.showJourneysTable(theJourneys, true, filter);
-    let selectAllBtn = document.getElementById("selectAll");
-    selectAllBtn.addEventListener("click", function () {
-        theJourneys.selectJourneys(1); // 1 == all on
-    });
-    let selectNoneBtn = document.getElementById("selectNone");
-    selectNoneBtn.addEventListener("click", function () {
-        theJourneys.selectJourneys(0); // 0 = all off
-    });
-    let zoomtoBtn = document.getElementById("zoomTo");
-    zoomtoBtn.addEventListener("click", function () {
-        MAP.zoomToBbox(theJourneys.calculateBbox(true));
-    });
-    let filterBtn = document.getElementById("filter");
-    filterBtn.addEventListener("click", function () {
-        if (filter) {
-            displayJourneysInTable(theJourneys, false);
-        } else {
-            displayJourneysInTable(theJourneys, true);
-        }
-    });
-    for (let aJourney of theJourneys.getJourneys()) {
-        let selBtn = document.getElementById("select_" + aJourney.id);
-        if (selBtn) { // only for those not filtered out!
-            selBtn.addEventListener("click", function () {
-                theJourneys.selectJourneys(aJourney.id); // id = toggle just this one
-            });
-        }
-        let delBtn = document.getElementById("del_" + aJourney.id);
-        if (delBtn) { // only for those not filtered out!
-            delBtn.addEventListener("click", function () {
-                delJourney(aJourney.id);
-            });
-        }
-        let editBtn = document.getElementById("edit_" + aJourney.id);
-        if (editBtn) { // only for those not filtered out!
-            editBtn.addEventListener("click", function () {
-                editJourney(APP.journeys, aJourney.id);
-            });
-        }
-    }
-}
-
-//needed because we otherwise have too many nested quotes...
-function filterJourneys(doFilter) {
-    displayJourneysInTable(APP.journeys, "workflow", doFilter);
-}
-
-/*-- Edit selected Journey  -*/
-function editJourney(theJourneys, ID) {
-    for (let theJourney of APP.journeys.getJourneys()) {
-        if (theJourney.id === ID) {
-            UI.SetMessage("Edit properties and save...", workflowMsg);
-            // if dates are NULL in DB, show them as empty string in form;
-            if (theJourney.startDateTime === null || theJourney.startDateTime === 'null') theJourney.startDateTime = '';
-            if (theJourney.endDateTime === null || theJourney.endDateTime === 'null') theJourney.endDateTime = '';
-            UI.workflowPane.innerHTML = HTML.editJourneyForm(theJourney);
-            for (let i=0; i < APP.journeytypes.length; i++) {
-                if (parseInt(APP.journeytypes[i].id) === theJourney.type) document.getElementById("col_type").selectedIndex = i;
-            }
-            let SaveBtn = document.getElementById("SaveBtn");
-            SaveBtn.addEventListener("click", async function () {
-                theJourney.notes = escapeStr(document.getElementById("journey_notes").value, true);
-                theJourney.type = parseInt(document.getElementById("col_type").value);
-                if (await DB.patchJourney(theJourney, ID) ) {
-                    // RELOAD from DB
-                    doJourneySearchAndShow(theJourneys.getWhereStr(), displayTable = true, displayMap = true, zoomToExtent = false);
-                    UI.SetMessage("Edited Journey. Click in map or table to alter selection...", workflowMsg);
-                } else {
-                    displayJourneysInTable(APP.journeys, false);
-                    UI.SetMessage("Update of Journey FAILED. Click in map or table to alter selection...", workflowMsg);
-                }
-            });
-            let CancelBtn = document.getElementById("CancelBtn");
-            CancelBtn.addEventListener("click", function () {
-                displayJourneysInTable(APP.journeys, false);
-                UI.SetMessage("Cancelled Editing. Click in map or table to alter selection...", workflowMsg);
-            });
-        }
-    }
-}
-
-/*-- Delete selected Journey  -*/
-async function delJourney(ID) {
-    const theStr = `Are you REALLY sure you want to delete this Journey [id=${ID}]?\nThis action can NOT be undone!`;
-    if (confirm(theStr)) {
-        if (await DB.deleteJourney(ID)) {
-            //reload from DB:
-            await APP.journeys.loadFromDB(APP.journeys.getWhereStr()); // re-use existing WHERE statement to reload same legs
-            UI.SetMessage("Deleted Journey. Now " + APP.journeys.getNumJourneys() + " Journeys found in DB. Click in map or table to alter selection...", workflowMsg);
-            APP.journeys.mapJourneys(APP.journeys, true);
-            displayJourneysInTable(APP.journeys, false);
-        } else {
-            UI.SetMessage("Deletion of Journey failed. Click in map or table to alter selection...", workflowMsg);
-        }
-    }
-}
 
 function highlightLegOfJourney(theJourneyID, theLegID, highlight) {
     let theLeg = APP.journeys.getJourneyById(theJourneyID).getLegsCollection().getLegById(theLegID);
     if (highlight) {
         theLeg.selected = !theLeg.selected;
-        let X = document.getElementById("btn_" + theLegID).getBoundingClientRect().right - 10;
-        let Y = document.getElementById("btn_" + theLegID).getBoundingClientRect().top - 170;
-        UI.SetMessage(HTML.journeyLegInfoPopup(theLeg), dataMsg, [X, Y]);
+        // let X = document.getElementById("btn_" + theLegID).getBoundingClientRect().right - 10;
+        // let Y = document.getElementById("btn_" + theLegID).getBoundingClientRect().top - 170;
+        // UI.SetMessage(HTML.journeyLegInfoPopup(theLeg), dataMsg, [X, Y]);
     } else {
         theLeg.selected = !theLeg.selected;
-        UI.SetMessage(' ', hideMsg, null);
+        // UI.SetMessage(' ', hideMsg, null);
     }
     theLeg.selectOnMap(theLeg.selected, APP.map.getLayerDataByName("Journeys"));
 }
 
+
+
+///*****************************************
+// ANIMATE TEST
+
+async function animateJourneys() {
+    await sleep(1000);
+    let JJ = APP.journeys.getJourneys();
+    const noJourneys = JJ.length;
+    for (j=noJourneys-1;j>=0;j--) {
+        let aJourney = JJ[j];
+        let LL = aJourney.getLegsCollection().getLegs();
+        const noLegs = LL.length;
+        for (l=0;l<noLegs;l++) {
+            let aLeg=LL[l];
+            highlightLegOfJourney(aJourney.getID(), aLeg.getID(), true);
+            APP.map.mapObj.render();
+            console.log('j=' + j + '; l=' + l);
+            await sleep(1000);
+            highlightLegOfJourney(aJourney.getID(), aLeg.getID(), false);
+        }
+    }
+}
+
+function sleep(ms) {
+    return new Promise(resolve => setTimeout(resolve, ms));
+}
