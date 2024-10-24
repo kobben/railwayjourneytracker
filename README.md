@@ -1,6 +1,6 @@
 ## Railway Journey Tracker
 
-©2022-24 Barend Köbben - <a href="mailto:b.j.kobben@utwente.nl">b.j.kobben@utwente.nl</a> 
+©2024 Barend Köbben - <a href="mailto:b.j.kobben@utwente.nl">b.j.kobben@utwente.nl</a> 
 
 This is a WebApp for keeping track of railway journeys. It lets you extract GeoJSON entities 
 (Journey Stops and Legs) from OSM public transport data (and some other sources). 
