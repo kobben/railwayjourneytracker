@@ -26,8 +26,8 @@ SPDX-License-Identifier: GPL-3.0-only
 * TURF (6.5.0), simple-to-understand JavaScript functions that speak GeoJSON: https://turfjs.org
 
 #### Changelist:
-    v1.4 Aug 2024
-        - added several features: 'busy' pointer for long tasks, (see bugtracker.md for details)
+    v1.4 Oct 2024
+        - added several features (see bugtracker.md for details)
         - removed several bugs (see bugtracker.md for details)
     v1.3 Feb 2024
         - removed several bugs (see bugtracker.md)
