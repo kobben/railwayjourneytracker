@@ -20,12 +20,12 @@ MAP = {
     mapObj: undefined,
     mapView: undefined,
     mapDraw: undefined,
+    stopStyleRed: undefined,
     stopStyleNone: undefined,
     stopStyleBlue: undefined,
-    stopStyleRed: undefined,
     stopStyleGreen: undefined,
-    lineStyleBlue: undefined,
     lineStyleRed: undefined,
+    lineStyleBlue: undefined,
     lineStyleGreen: undefined,
     lineStyleGrey: undefined,
     lineStyleNone: undefined,
@@ -39,7 +39,6 @@ MAP = {
 //Map METHODS:
 
     init: function (mapName, startCoords, startZoom, onClickCallback, showCoords = false) {
-
         let _mapObj, _mapView; //local versions
         _mapObj = new ol.Map({target: "mapDiv"});
         const osmLayer = new ol.layer.Tile({
@@ -210,7 +209,7 @@ MAP = {
                 color: 'rgb(10,170,170)',
                 width: 5,
             }),
-            zIndex:999,
+            zIndex:800,
         });
         const lineStyleNone = new ol.style.Style({
             stroke: new ol.style.Stroke({
@@ -222,7 +221,7 @@ MAP = {
         const lineStyleGreen = new ol.style.Style({
             stroke: new ol.style.Stroke({
                 color: 'rgba(1,224,1,0.6)',
-                width: 5,
+                width: 6,
             }),
             zIndex:200,
         });
@@ -401,20 +400,19 @@ MAP = {
         const max = 3;
         if (total !== 0) {
             let popupHTML = '<table class="popup">';
-            // for (let i=1; i <= max; i++) {
-            let i = 0;
-            for (aFeature of features) {
-                if (aFeature.l === 'Legs' || aFeature.l === 'Stops' || aFeature.l === 'Journeys')  {
-                    i++;
-                    if (i <= max) {
-                        popupHTML += HTML.mapInfoPopup(aFeature.l, aFeature.f, i, total);
-                    } else if (i === max + 1) {
-                        popupHTML += '<tr><td colspan="2"><i>+ ' + (total - i + 1) + ' more...</i></td></tr>';
+            let count = 0;
+            for (let i= total-1; i >= 0; i--) {
+                if (features[i].l === 'Legs' || features[i].l === 'Stops' || features[i].l === 'Journeys')  {
+                    count++;
+                    if (count <= max) {
+                        popupHTML += HTML.mapInfoPopup(features[i].l, features[i].f, count, total);
+                    } else if (count === max + 1) {
+                        popupHTML += '<tr><td colspan="2"><i>+ ' + (total - max) + ' more...</i></td></tr>';
                     }
                 }
             }
             popupHTML += '</table>';
-            if (i>0) UI.SetMessage(popupHTML, dataMsg, [pixel[0], pixel[1]]);
+            UI.SetMessage(popupHTML, dataMsg, [pixel[0], pixel[1]]);
         } else {
             UI.SetMessage(' ', hideMsg, null);
         }
@@ -468,6 +466,9 @@ MAP = {
         this.mapObj.un('singleclick', oldClickCallback);
         this.mapObj.on('singleclick', newClickCallback);
     }
-
+    ,
+    getExtent() {
+        return ol.proj.transformExtent(this.mapObj.getView().calculateExtent(this.mapObj.getSize()), 'EPSG:3857', 'EPSG:4326');
+    }
 
 } //end Map object

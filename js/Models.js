@@ -70,10 +70,16 @@ class StopsCollection {
         this.mapLayer = mapLayer; // if null, then non-mappable layer!
     }
 
-    async loadFromDB(whereStr) {
+    async loadFromDB(whereStr,  searchInBbox = false) {
         let stopsFound = [];
         let newStop = undefined;
-        let postUrl = '/stops?';
+        let postUrl = '';
+        if (searchInBbox) {
+            await DB.patchScreenBbox( APP.map.getExtent() ); // update screenbbox table in DB
+            postUrl += '/stops_in_bbox?'; //searches in DB VIEW that does an ST_intersects(stops.geom, screenbbox.bbox)
+        } else {
+            postUrl += '/stops?'; //searches in full TABLE stops
+        }
         postUrl += 'select=id,name,geojson';
         postUrl += '&order=name.asc&' + whereStr;
         // console.log(postUrl);
@@ -190,7 +196,7 @@ class StopsCollection {
         }
     }
 
-    selectStops(id = 0, zoomto = false)  {
+    selectStops(id = 0, zoomto = false) {
 
         if (this.mapLayer === null) {
             UI.SetMessage('Warning: trying to map non-mappable layer!', warningMsg, null);
@@ -283,11 +289,11 @@ class Stop {
                     this.selected = true;
                     if (zoomto) {
                         let myBbox = [
-                            this.geometry.coordinates[1]-0.0025,
-                            this.geometry.coordinates[0]-0.0025,
-                            this.geometry.coordinates[1]+0.0025,
-                            this.geometry.coordinates[0]+0.0025
-                            ];
+                            this.geometry.coordinates[1] - 0.0025,
+                            this.geometry.coordinates[0] - 0.0025,
+                            this.geometry.coordinates[1] + 0.0025,
+                            this.geometry.coordinates[0] + 0.0025
+                        ];
                         APP.map.zoomToBbox(myBbox);
                     }
                 } else {
@@ -318,12 +324,18 @@ class LegsCollection {
         this.mapLayer = mapLayer;
     }
 
-    async loadFromDB(whereStr = '', legStopsCollection = null) {
+    async loadFromDB(whereStr = '', legStopsCollection = null, searchInBbox = false) {
         // get ALL journeys that ALL legs are in:
         let legsInJourneys = await DB.loadLegsInJourneysFromDB();
         let legsFound = [];
         let loadedLeg = undefined;
-        let postUrl = '/legs?';
+        let postUrl = '';
+        if (searchInBbox) {
+            await DB.patchScreenBbox( APP.map.getExtent() ); // update screenbbox table in DB
+            postUrl += '/legs_in_bbox?'; //searches in DB VIEW that does an ST_intersects(legs.geom, screenbbox.bbox)
+        } else {
+            postUrl += '/legs?'; //searches in full TABLE legs
+        }
         postUrl += 'select=id,startdatetime,enddatetime,timesequential,notes,type,geojson,km,';
         /**
          * below is an ugly workaround for not being able to do or=() on embedded resources,
@@ -336,6 +348,7 @@ class LegsCollection {
         // postUrl += 'stopfrom(id,name,geojson),stopto(id,name,geojson)';
         postUrl += '&order=startdatetime.desc.nullslast&' + whereStr;
         let resultJSON = await DB.query("GET", postUrl);
+        // console.log(postUrl);
         if (resultJSON.error === true) {
             DB.giveErrorMsg(resultJSON);
         } else {
@@ -412,7 +425,7 @@ class LegsCollection {
     }
 
     mapLegs(legStopsCollection = null, zoomToExtent = true, clearMap = true) {
-       if (clearMap) this.clearMap(this.mapLayer);
+        if (clearMap) this.clearMap(this.mapLayer);
         for (let aLeg of this.legsarray) {
             aLeg.showOnMap(this.mapLayer);
         }
@@ -457,6 +470,17 @@ class LegsCollection {
             return [minlat, minlon, maxlat, maxlon];
         }
     }
+
+    collectJourneysOfLegs() {
+        let foundJourneyIDs = [];
+        for (let aLeg of this.legsarray) {
+            if (aLeg.partofjourney !== undefined && !foundJourneyIDs.includes(aLeg.partofjourney)) {
+                foundJourneyIDs.push(aLeg.partofjourney);
+            }
+        }
+        return foundJourneyIDs;
+    }
+
 
     selectLegs(id = 0) { // id is either a leg ID, or 0 for unselect all, 1 for select all
         if (this.mapLayer === null) {
@@ -611,12 +635,11 @@ class JourneysCollection {
         this.mapLayer = mapLayer;
     }
 
-    async loadFromDB(whereStr = '') {
+    async loadFromDB(whereStr = '', searchInBbox) {
         let journeysFound = [];
         let loadedJourney = undefined;
         let postUrl = '/journeys?';
         postUrl += 'select=id,notes,type,startdatetime,enddatetime,legsarray,'; //NOTE: legsarray = array of leg IDs, not Leg objects!!
-
         /**
          * below is an ugly workaround for not being able to do or=() on embedded resources,
          * asking for stopto_obj embedded for further processing, and use stopto for searching in WhereStr:
@@ -634,11 +657,15 @@ class JourneysCollection {
             DB.giveErrorMsg(resultJSON);
         } else {
             for (let aJourney of resultJSON.data) {
-                    loadedJourney = new Journey(aJourney.id, aJourney.notes, aJourney.type, aJourney.legsarray,
-                        aJourney.stopfrom_obj,aJourney.stopto_obj,aJourney.startdatetime,aJourney.enddatetime);
-                    await loadedJourney.loadJourneyLegsFromDB(); // necessary to get Leg geometries and stops from the LEGS table in DB
+                loadedJourney = new Journey(aJourney.id, aJourney.notes, aJourney.type, aJourney.legsarray,
+                    aJourney.stopfrom_obj, aJourney.stopto_obj, aJourney.startdatetime, aJourney.enddatetime);
+                await loadedJourney.loadJourneyLegsFromDB(searchInBbox);
+                // necessary to get Leg geometries and stops from the LEGS table in DB
+                if (loadedJourney.getLegsCollection().getNumLegs() !== 0) {
+                    // only use Journey if it has Legs - if not it was not in searchInBbox!
                     journeysFound.push(loadedJourney);
-                    loadedJourney = undefined;
+                }
+                loadedJourney = undefined;
             }
         }
         this.journeysarray = journeysFound;
@@ -789,23 +816,40 @@ class Journey {
         // these are set and get in the APP:
         this.selected = false; // selector boolean used later in mapping and other selections
         this.mapped = false;
+        this.travelTime = {}; //later calculated from endDateTime - startDateTime
+        this.km = 0; //later added up from legs km
     }
 
-    async loadJourneyLegsFromDB() {
-         let theWhereStr = 'id=in.(' + this.legsIDArray + ')';
-         await this.legscollection.loadFromDB(theWhereStr, this.stopscollection);
-        // sort Legs  ascending by startDateTime, needed because the DB result might not
-        // be in time-order (which is correct in the legIDs Array)
-        let sortedLegs = this.legscollection.getLegs().sort(function (a, b) {
-            const dt1 = new Date(a.startDateTime)
-            const dt2 = new Date(b.startDateTime)
-            return dt1 - dt2;
-        });
-        // we recalculate these, because the underlying Legs may have changed:
-        this.stopFrom = sortedLegs[0].stopFrom;
-        this.stopTo = sortedLegs[sortedLegs.length-1].stopTo;
-        this.startDateTime = sortedLegs[0].startDateTime;
-        this.endDateTime = sortedLegs[sortedLegs.length-1].endDateTime;
+    async loadJourneyLegsFromDB(searchInBbox = false) {
+        let theWhereStr = 'id=in.(' + this.legsIDArray + ')';
+        // NOTE: if searchInBbox, below will find only those Legs from the Journey that are in the BBox...
+        await this.legscollection.loadFromDB(theWhereStr, this.stopscollection, searchInBbox)
+        if (this.legscollection.getNumLegs() === 0 && !searchInBbox) { // No Legs in Journey Unexpected
+            UI.SetMessage('Unexpected error in Journey.loadJourneyLegsFromDB(): No Legs found in this Journey.',errorMsg);
+        } else if (this.legscollection.getNumLegs() === 0 && searchInBbox) { // No Legs in Journey Expected
+            // this is expected: no legs are  in search Bbox, so do NOT need this Journey
+        } else if (this.legscollection.getNumLegs() > 0) { // legs found :
+            if (searchInBbox) { //this indicates at least one Leg of Journey is in Bbox,
+                // therefore we will need to load ALL legs regardless of being in BBox or not!
+                await this.legscollection.loadFromDB(theWhereStr, this.stopscollection, false);
+            }
+            // sort Legs  ascending by startDateTime, needed because the DB result might not
+            // be in time-order (which is correct in the legIDs Array)
+            let sortedLegs = this.legscollection.getLegs().sort(function (a, b) {
+                const dt1 = new Date(a.startDateTime)
+                const dt2 = new Date(b.startDateTime)
+                return dt1 - dt2;
+            });
+            // we recalculate these, because the underlying Legs may have changed:
+            this.stopFrom = sortedLegs[0].stopFrom;
+            this.stopTo = sortedLegs[sortedLegs.length - 1].stopTo;
+            this.startDateTime = sortedLegs[0].startDateTime;
+            this.endDateTime = sortedLegs[sortedLegs.length - 1].endDateTime;
+            this.travelTime = calculateTravelTime(this.startDateTime, this.endDateTime);
+            for (let aLeg of sortedLegs) {
+                this.km += aLeg.km;
+            }
+        }
     }
 
     getID() {
@@ -819,7 +863,7 @@ class Journey {
     getLegsCollection() {
         return this.legscollection;
     }
-    
+
     getStopsCollection() {
         return this.stopscollection;
     }
@@ -828,17 +872,25 @@ class Journey {
         return this.legscollection.calculateBbox(false); // [minlat, minlon, maxlat, maxlon];
     }
 
+
+    calculateKm() {
+
+        this.km = km;
+        console.log(this.travelTimeTxt);
+        return this.km;
+    }
+
     showOnMap(mapLayer) {
         if (!this.mapped) { // avoid showing same Leg twice
-           this.legscollection.mapLegs(this.stopscollection, false, false);
-           this.mapped = true;
+            this.legscollection.mapLegs(this.stopscollection, false, false);
+            this.mapped = true;
         }
     }
 
     removeFromMap(mapLayer) {
         let F = mapLayer.getFeatures();
         for (let f of F) {
-            if (this.getLegIDs().includes(f.get('id')) ) { //is the Leg in the Journey?
+            if (this.getLegIDs().includes(f.get('id'))) { //is the Leg in the Journey?
                 mapLayer.removeFeature(f);
                 this.mapped = false;
             }
@@ -849,7 +901,7 @@ class Journey {
         let F = mapLayer.getFeatures();
         for (let f of F) {
             let mappedLegID = f.get('id');
-            if ( this.getLegIDs().includes(mappedLegID) ) { //this Leg is part of this Journey
+            if (this.getLegIDs().includes(mappedLegID)) { //this Leg is part of this Journey
                 if (selected) {
                     this.getLegsCollection().getLegById(mappedLegID).selected = true;
                     f.setStyle(MAP.JourneySelectedStyle);
@@ -864,6 +916,72 @@ class Journey {
             }
         }
     }
+
+}
+
+
+// ***************************************************************//
+//  CLASS JourneyPropsCollection
+//  models a collection of PROPERTIES of JOURNEYs
+//  = a light version of full JOURNEYs for purpose of showing the properties only
+// ***************************************************************//
+//
+class JourneyPropsCollection {
+
+    constructor() {
+        this.journeyPropsArray = [];
+        this.numjourneys = 0;
+        this.wherestr = '';
+    }
+
+    async loadFromDB(whereStr = '') {
+        let JourneyPropsFound = [];
+
+        let postUrl = '/journeys?';
+        postUrl += 'select=id,notes,type,startdatetime,enddatetime,';
+
+        /**
+         * below is an ugly workaround for not being able to do or=() on embedded resources,
+         * asking for stopto_obj embedded for further processing, and use stopto for searching in WhereStr:
+         */
+        postUrl += 'stopfrom_obj:stopfrom(id,name,geojson),stopto_obj:stopto(id,name,geojson)';
+        /**
+         * we would prefer to simply do this:
+         */
+        // postUrl += 'stopfrom(id,name,geojson),stopto(id,name,geojson)';
+
+        postUrl += '&order=startdatetime.desc.nullslast&' + whereStr;
+        // console.log(postUrl);
+        let resultJSON = await DB.query("GET", postUrl);
+        if (resultJSON.error === true) {
+            DB.giveErrorMsg(resultJSON);
+        } else {
+            for (let aJourneyProps of resultJSON.data) {
+                this.journeyPropsArray.push({
+                        id: aJourneyProps.id,
+                        notes: aJourneyProps.notes,
+                        type: aJourneyProps.type,
+                        stopfrom: aJourneyProps.stopfrom_obj.name,
+                        stopto: aJourneyProps.stopto_obj.name,
+                        startdatetime: aJourneyProps.startdatetime,
+                        enddatetime: aJourneyProps.enddatetime
+                    });
+            }
+        }
+        this.wherestr = whereStr;
+        this.numjourneys = this.journeyPropsArray.length;
+    }
+
+    getJourneyPropsById(id) {
+        for (let aJourneyProps of this.journeyPropsArray) {
+            if (aJourneyProps.id === id) {
+                return aJourneyProps;
+            }
+        }
+        UI.SetMessage("Unexpected error: GetJourneyPropsByID returned undefined.", errorMsg);
+        return undefined;
+    }
+
 
 }
 

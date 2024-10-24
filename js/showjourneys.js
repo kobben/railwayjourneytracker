@@ -16,10 +16,12 @@ let APP = {
     // legstops: undefined, //these are the stops that are end- or startpoint of the selected legs
     // alllegs: undefined,
     journeys: undefined,
-    // legtypes: undefined,
+    legtypes: undefined,
     journeytypes: undefined,
     restart: function () {
-        openURLwithCurrentLocation(APP.url);
+        const curZoom = this.map.mapView.getZoom();
+        const curCenter = ol.proj.transform(this.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
+        location.replace(this.url + "?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom);
     }
 };
 
@@ -122,8 +124,8 @@ function showSearchJourneysForm(withSkipBtn = false, displayTable = true, displa
                 doNextStep.call();
             } else {
                 // else, to make sure we return NO legs, but we do have all data structures in place, search for *nothing* :
-                let theWhereStr = 'id=eq.-99';
-                doJourneySearchAndShow(theWhereStr, displayTable, displayMap, false, doNextStep);
+                let theWhereStr = 'id=eq.-99999';
+                doJourneySearchAndShow(theWhereStr, displayTable, displayMap, false, doNextStep, false);
             }
         });
     }
@@ -131,7 +133,12 @@ function showSearchJourneysForm(withSkipBtn = false, displayTable = true, displa
     SearchBtn.addEventListener("click", async function () {
         let theWhereStr = await updateWhereStr('journeys', ['id','notes', 'type','stopfrom', 'stopto', 'startdatetime', 'enddatetime']);
         let zoomToExtent = document.getElementById("zoomtoextent").checked;
-        doJourneySearchAndShow(theWhereStr, displayTable, displayMap, zoomToExtent, doNextStep);
+        let searchInBbox = document.getElementById("searchinbbox").checked;
+        if (searchInBbox) { //override Zoom toExtent setting:
+            zoomToExtent = false;
+            document.getElementById("zoomtoextent").checked = false;
+        }
+        doJourneySearchAndShow(theWhereStr, displayTable, displayMap, zoomToExtent, doNextStep,searchInBbox);
     });
     // ** wait for form to be submitted, then next step  **//
 }
@@ -140,8 +147,9 @@ function showSearchJourneysForm(withSkipBtn = false, displayTable = true, displa
 // used in showSearchLegsForm() above and to redo existing searches elsewhere
 // returns APP.legs and APP.legstops
 async function doJourneySearchAndShow(theWhereStr, displayTable = true, displayMap = true,
-                                   zoomToExtent = true, doNextStep = null) {
-    await APP.journeys.loadFromDB(theWhereStr);
+                                   zoomToExtent = true, doNextStep = null, searchInBbox = false) {
+    document.body.style.cursor = "progress";
+    await APP.journeys.loadFromDB(theWhereStr, searchInBbox);
     UI.SetMessage(APP.journeys.getNumJourneys() + " Journeys found in DB...", workflowMsg);
     if (displayMap) APP.journeys.mapJourneys(zoomToExtent);
 
@@ -150,6 +158,7 @@ async function doJourneySearchAndShow(theWhereStr, displayTable = true, displayM
     } else {
         UI.workflowPane.innerHTML = '';
     }
+    document.body.style.cursor = "auto";
     if (doNextStep !== null) doNextStep.call();
 }
 
@@ -176,6 +185,7 @@ function displayJourneysInTable(theJourneys, filter = false) {
         }
     });
     for (let aJourney of theJourneys.getJourneys()) {
+
         let selBtn = document.getElementById("select_" + aJourney.id);
         if (selBtn) { // only for those not filtered out!
             selBtn.addEventListener("click", function () {
@@ -210,7 +220,7 @@ function editJourney(theJourneys, ID) {
             // if dates are NULL in DB, show them as empty string in form;
             if (theJourney.startDateTime === null || theJourney.startDateTime === 'null') theJourney.startDateTime = '';
             if (theJourney.endDateTime === null || theJourney.endDateTime === 'null') theJourney.endDateTime = '';
-            UI.workflowPane.innerHTML = HTML.editJourneyForm(theJourney);
+            UI.workflowPane.innerHTML = HTML.editJourneyForm(theJourney, true);
             for (let i=0; i < APP.journeytypes.length; i++) {
                 if (parseInt(APP.journeytypes[i].id) === theJourney.type) document.getElementById("col_type").selectedIndex = i;
             }
@@ -238,16 +248,19 @@ function editJourney(theJourneys, ID) {
 
 /*-- Delete selected Journey  -*/
 async function delJourney(ID) {
-    const theStr = `Are you REALLY sure you want to delete this Journey [id=${ID}]?\nThis action can NOT be undone!`;
+    let theStr = `Are you sure you want to delete this Journey [id=${ID}]?`;
     if (confirm(theStr)) {
-        if (await DB.deleteJourney(ID)) {
-            //reload from DB:
-            await APP.journeys.loadFromDB(APP.journeys.getWhereStr()); // re-use existing WHERE statement to reload same legs
-            UI.SetMessage("Deleted Journey. Now " + APP.journeys.getNumJourneys() + " Journeys found in DB. Click in map or table to alter selection...", workflowMsg);
-            APP.journeys.mapJourneys(APP.journeys, true);
-            displayJourneysInTable(APP.journeys, false);
-        } else {
-            UI.SetMessage("Deletion of Journey failed. Click in map or table to alter selection...", workflowMsg);
+        theStr = `Are you REALLY sure you want to delete this Journey [id=${ID}]?\nThis action CAN NOT BE UNDONE!`;
+        if (confirm(theStr)) {
+            if (await DB.deleteJourney(ID)) {
+                //reload from DB:
+                await APP.journeys.loadFromDB(APP.journeys.getWhereStr()); // re-use existing WHERE statement to reload same legs
+                UI.SetMessage("Deleted Journey. Now " + APP.journeys.getNumJourneys() + " Journeys found in DB. Click in map or table to alter selection...", workflowMsg);
+                APP.journeys.mapJourneys(false, true);
+                displayJourneysInTable(APP.journeys, false);
+            } else {
+                UI.SetMessage("Deletion of Journey failed. Click in map or table to alter selection...", workflowMsg);
+            }
         }
     }
 }

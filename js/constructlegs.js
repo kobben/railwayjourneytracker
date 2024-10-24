@@ -2,7 +2,7 @@
 // CONSTRUCTLEG
 // this APP lets you create Legs based on OSM relations, and store them in a DB.
 //
-// v1.0  May 2023, see README.md for details
+// v1.3  Feb 2024, see README.md for details
 // ***************************************************************//
 // ***************************************************************//
 //
@@ -20,7 +20,9 @@ let APP = {
     candidatelegs: undefined, //used for temp set of legs to choose from (eg in constructLineManually()
     legtypes: undefined,
     restart: function () {
-        openURLwithCurrentLocation(APP.url);
+        const curZoom = this.map.mapView.getZoom();
+        const curCenter = ol.proj.transform(this.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
+        location.replace(this.url + "?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom);
     }
 };
 
@@ -405,7 +407,7 @@ function doConstructLeg() {
 /*-- End of STEP 8  -*/
 
 
-/*-- Utilty Function used only in this APP -*/
+/*-- Utility Function used only in this APP -*/
 // takes a (possibly) unordered MultiLineString (from an OSMrelation) and
 // returns 1 Linestring, ordered from start to end, and without duplicate coords
 // This version is using JSTS LineMerger:
@@ -448,7 +450,7 @@ function extractLineFromMultiline(geom, automatic = true) {
             if (confirm(messageStr)) {
                 // switches into the alternative workflow of manual construction :
                 constructLineManually(jsts_writer, mergedLineStrings);
-                // Will NOT return here, but after successfull merging will call its 'mother' function again: extractLineFromMultiline()
+                // Will NOT return here, but after successful merging will call its 'mother' function again: extractLineFromMultiline()
             } else {
                 return undefined;
             }
@@ -517,7 +519,7 @@ function constructLineManually(jsts_writer, jstsLineStrings) {
         if (mergedGeom === undefined) {
             //not successful, keep trying
         } else {
-            // succesfull, offer finalisation
+            // succesful, offer finalisation
             AcceptBtn.style.display = "inline";
         }
     });
@@ -530,6 +532,23 @@ function constructLineManually(jsts_writer, jstsLineStrings) {
         UI.resetActionBtns();
         APP.map.changeClickCallback(selectClickedLeg,findOSMrelation);
         evaluateStops(APP.OSMrelation.relStops);
+    });
+    let CancelBtn = document.getElementById("action5Btn");
+    CancelBtn.value = "CANCEL";
+    CancelBtn.style.display = "inline";
+    CancelBtn.addEventListener("click", function () {
+        APP.candidatelegs.selectLegs(0); // unselect all
+        // remove accept btn if shown, because selection changed
+        if (document.getElementById("action4Btn").style.display === "inline") {
+            document.getElementById("action4Btn").style.display = "none";
+        }
+        UI.resetActionBtns();
+        APP.map.changeClickCallback(selectClickedLeg, findOSMrelation);
+        APP.map.getLayerDataByName("NewLegs").clear();
+        APP.map.getLayerDataByName("NewStops").clear();
+        UI.workflowPane.innerHTML = '';
+        UI.showActionBtns();
+        UI.SetMessage("Cancelled. Start by selecting an OSM relation in the map...", workflowMsg);
     });
     UI.showActionBtns();
     APP.map.changeClickCallback(findOSMrelation, selectClickedLeg);

@@ -17,7 +17,9 @@ let APP = {
     newStops: undefined,
     osmClicked: undefined, //need this to be global
     restart: function () {
-        openURLwithCurrentLocation(APP.url);
+        const curZoom = this.map.mapView.getZoom();
+        const curCenter = ol.proj.transform(this.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
+        location.replace(this.url + "?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom);
     }
 };
 
@@ -47,7 +49,7 @@ async function initConstructStops() {
         APP.existingStops = new StopsCollection(APP.map.getLayerDataByName("Stops"));
         await APP.existingStops.loadFromDB(''); // empty WHERE: should load all existing stops
         APP.existingStops.mapStops(false);
-        UI.SetMessage("Click on stop in OSM map, or elsewhere to create a new stop...", workflowMsg);
+        UI.SetMessage("Click to find stop in OSM, or create a new Stop [blue stops are in DB]...", workflowMsg);
         // step 1 done, waiting for mapclick to trigger step 2...
     } else {
         UI.SetMessage("Could not initialise DB connection.", errorMsg);

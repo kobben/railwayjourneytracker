@@ -19,7 +19,9 @@ let APP = {
     legs: undefined,
     legtypes: undefined,
     restart: function () {
-        openURLwithCurrentLocation(APP.url);
+        const curZoom = this.map.mapView.getZoom();
+        const curCenter = ol.proj.transform(this.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
+        location.replace(this.url + "?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom);
     }
 };
 
@@ -58,7 +60,7 @@ async function initDrawLegs() {
         /*-- ***********/
         // ** step 2:
         // ***********
-        showSearchLegsForm(true, false, true, chooseStopsForDrawing); // in Utils.js
+        showSearchLegsForm(true, false, true, chooseStopsForDrawing, false); // in Utils.js
         // ** wait for form to be submitted
         //  returns with APP.legs + APP.legstops set
         //   ==> step 4: choos Stops
@@ -157,11 +159,11 @@ function pickFromStop(id, name) {
             APP.fromStop.selectOnMap(false, APP.map.getLayerDataByName("Stops"));
         }
         APP.fromStop = theFromStop;
-        APP.fromStop.selectOnMap(true, APP.map.getLayerDataByName("Stops"));
+        APP.fromStop.selectOnMap(true, APP.map.getLayerDataByName("Stops"),true);
     }
 }
 function pickToStop(id, name) {
-    let theToStop;
+    let theToStop = undefined;
     for (let aStop of APP.allstops.getStops()) { // first check if OSM relation stop
         if (parseInt(aStop.id) === parseInt(id)) { // id might be stored as Str!
             theToStop = aStop;
@@ -174,7 +176,7 @@ function pickToStop(id, name) {
             APP.toStop.selectOnMap(false, APP.map.getLayerDataByName("Stops"));
         }
         APP.toStop = theToStop;
-        APP.toStop.selectOnMap(true, APP.map.getLayerDataByName("Stops"));
+        APP.toStop.selectOnMap(true, APP.map.getLayerDataByName("Stops"),true);
     }
 }
 // end of utility functions

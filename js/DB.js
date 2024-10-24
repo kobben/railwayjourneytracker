@@ -100,9 +100,8 @@ DB = {
                 return true;
             }
         } catch (e) {
-            UI.SetMessage("ERROR in AddStop function in DB module:\n " + e, errorMsg);
-            // console.log(geojsonStr);
-            // console.log(postObjStr);
+            UI.SetMessage("ERROR in AddStop function in DB module:\n " +  + e
+                + '\npostURl  = ' + postObjStr,errorMsg );
         }
     }
     ,
@@ -117,7 +116,8 @@ DB = {
                 return true;
             }
         } catch (e) {
-            UI.SetMessage("ERROR in deleteLeg function in DB module:\n " + e, errorMsg);
+            UI.SetMessage("ERROR in deleteLeg function in DB module:\n " +  + e
+                + '\npostURl  = ' + postObjStr,errorMsg );
         }
     }
     ,
@@ -132,7 +132,8 @@ DB = {
                 return true;
             }
         } catch (e) {
-            UI.SetMessage("ERROR in deleteJourney function in DB module:\n " + e, errorMsg);
+            UI.SetMessage("ERROR in deleteJourney function in DB module:\n " +  + e
+                + '\npostURl  = ' + postObjStr,errorMsg );
         }
     }
     ,
@@ -147,7 +148,8 @@ DB = {
                 return true;
             }
         } catch (e) {
-            UI.SetMessage("Unexpected ERROR in delStop function in DB module:\n " + e, errorMsg);
+            UI.SetMessage("Unexpected ERROR in delStop function in DB module:\n " +  + e
+                + '\npostURl  = ' + postObjStr,errorMsg );
         }
     }
     ,
@@ -172,7 +174,8 @@ DB = {
                 return true;
             }
         } catch (e) {
-            UI.SetMessage("ERROR in Addleg function in DB module:\n " + e, errorMsg);
+            UI.SetMessage("ERROR in Addleg function in DB module:\n " + e
+                + '\npostURl  = ' + postObjStr,errorMsg );
         }
     }
     ,
@@ -194,7 +197,8 @@ DB = {
                 return true;
             }
         } catch (e) {
-            UI.SetMessage("ERROR in addJourney function in DB module:\n " + e, errorMsg);
+            UI.SetMessage("ERROR in addJourney function in DB module:\n "  + e
+                + '\npostURl  = ' + postObjStr, errorMsg );
         }
     }
     ,
@@ -221,8 +225,8 @@ DB = {
                 return true;
             }
         } catch (e) {
-            UI.SetMessage("ERROR in patchleg function in DB module:\n " + e, errorMsg);
-            console.log(postObjStr);
+            UI.SetMessage("ERROR in patchLeg function in DB module:\n " +  + e
+                + '\npostURl  = ' + postObjStr, errorMsg );
         }
     }
     ,
@@ -244,8 +248,8 @@ DB = {
                 return true;
             }
         } catch (e) {
-            UI.SetMessage("ERROR in patchjourney function in DB module:\n " + e, errorMsg);
-            console.log(postObjStr);
+            UI.SetMessage("ERROR in patchJourney function in DB module:\n " +  + e
+                + '\npostURl  = ' + postObjStr, errorMsg );
         }
     }
     ,
@@ -266,8 +270,38 @@ DB = {
                 return true;
             }
         } catch (e) {
-            UI.SetMessage("ERROR in patchStop function in DB module:\n " + e, errorMsg);
-            console.log(postObjStr);
+            UI.SetMessage("ERROR in patchStop function in DB module:\n " +  + e
+                + '\npostURl  = ' + postObjStr, errorMsg );
+        }
+    }
+    ,
+    patchScreenBbox: async function (theBbox) {
+        let postObjStr='';
+        try {
+            let whereStr = '?id=eq.1;' //there is only 1 row in screen bbox table = the current bbox!
+            let postUrl = '/screenbbox' + whereStr;
+            const ll = [theBbox[0],theBbox[1]];
+            const ul = [theBbox[0],theBbox[3]];
+            const ur = [theBbox[2],theBbox[3]];
+            const lr = [theBbox[2],theBbox[1]];
+            const theBBPoly = { // simple GeoJSON Polygon geometry [[[lon,lat],[lon,lat],...]]
+                type: "Polygon",
+                coordinates: [[ ll,ul,ur,lr,ll ]],
+            };
+            let geojsonStr = JSON.stringify(theBBPoly, null, 0);
+            postObjStr = `{ "geojson": ${geojsonStr}  }`;
+            let postObj = JSON.parse(postObjStr);
+            let resultJSON = await this.query("PATCH", postUrl, postObj);
+            if (resultJSON.error === true) {
+                this.giveErrorMsg(resultJSON);
+                console.log(postObjStr);
+                return false;
+            } else {
+                return true;
+            }
+        } catch (e) {
+            UI.SetMessage("ERROR in patchScreenBbox function [DB module]:\n " +  + e
+                + '\npostURl  = ' + postObjStr, errorMsg );
         }
     }
     ,

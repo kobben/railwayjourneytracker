@@ -30,26 +30,37 @@ HTML = {
         let html = '';
         for (let aStop of OSMstops) {
             if (fromOrTo === 'from') {
-                html+= `<tr class="selector" onclick="pickFromStop(${aStop.id}, '${aStop.name}')" id="from_${aStop.id}"><td>${aStop.name}</td><td>${aStop.id}</td></tr>`;
+                html += `<tr class="selector" onclick="pickFromStop(${aStop.id}, '${aStop.name}')" id="from_${aStop.id}"><td>${aStop.name}</td><td>${aStop.id}</td></tr>`;
             } else {
-                html+= `<tr class="selector" onclick="pickToStop(${aStop.id}, '${aStop.name}')"  id="to_${aStop.id}"><td>${aStop.name}</td><td>${aStop.id}</td></tr>`;
+                html += `<tr class="selector" onclick="pickToStop(${aStop.id}, '${aStop.name}')"  id="to_${aStop.id}"><td>${aStop.name}</td><td>${aStop.id}</td></tr>`;
             }
         }
         return html;
     }
     ,
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
-    createLegsButtons: function (theJourney, asColumn = true) {
+    createLegsButtons: function (theJourney, asColumn = true, highlightLegs = true) {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
         let html = '';
         for (let aLegID of theJourney.getLegIDs()) {
-            html += '<button  id="btn_' + aLegID + '" ' +
-                ' onmouseover="highlightLegOfJourney(' + theJourney.getID() + ',' + aLegID + ', true)"' +
-                ' onmouseout="highlightLegOfJourney(' + theJourney.getID() + ',' + aLegID + ', false)"' +
-                ' onclick="showLegOfJourney(' + aLegID + ')"' +
-                '>' + aLegID + '</button>';
-            if (asColumn) {
-                html += '<br/>';
+            if (highlightLegs) { //also highlight in map (full journeyCollection needed)
+                html += '<button  id="btn_' + aLegID + '" ' +
+                    ' onmouseover="highlightLegOfJourney(' + theJourney.getID() + ',' + aLegID + ', true)"' +
+                    ' onmouseout="highlightLegOfJourney(' + theJourney.getID() + ',' + aLegID + ', false)"' +
+                    ' onclick="showLegOfJourney(' + aLegID + ')"' +
+                    '>' + aLegID + '</button>';
+                if (asColumn) {
+                    html += '<br/>';
+                }
+            } else { //just show props (only journeyPropsCollection needed)
+                html += '<button  id="btn_' + aLegID + '" ' +
+                    ' onmouseover="showLegProps(' + aLegID + ', true)"' +
+                    ' onmouseout="showLegProps(' + aLegID + ', false)"' +
+                    '>' + aLegID + '</button>';
+                if (asColumn) {
+                    html += '<br/>';
+                }
+
             }
         }
         return html;
@@ -61,6 +72,8 @@ HTML = {
         let html = '';
         if (journeyID !== undefined) {
             html += '<button  id="btn_' + journeyID + '" ' +
+                ' onmouseover="showJourneyProps(' + journeyID + ', true)"' +
+                ' onmouseout="showJourneyProps(' + journeyID + ', false)"' +
                 ' onclick="showJourneyOfLeg(' + journeyID + ')"' +
                 '>' + journeyID + '</button>';
         }
@@ -139,26 +152,29 @@ HTML = {
 <tr><td>Notes:</td><td>${escapeStr(feature.get('notes'), false, 32)}</td></tr>
 `;
         } else if (layerName === 'Journeys') {
-            let theJourney = undefined;
-            for (aJourney of APP.journeys.getJourneys()) {
-                if (aJourney.getLegIDs().includes(feature.get('id'))) {
-                    theJourney = aJourney;
-                    html += `
-<tr><td colspan="2">JOURNEY (${HTML.findTypeName(APP.journeytypes, theJourney.type)})</td></tr>
-<tr><td>From:</td><td>${theJourney.stopFrom.name}</td></tr>
-<tr><td>To:</td><td>${theJourney.stopTo.name}</td></tr>
-<tr><td>Start:</td><td>${HTML.formatDateTime(theJourney.startDateTime)}</td></tr>
-<tr><td>End:</td><td>${HTML.formatDateTime(theJourney.endDateTime)}</td></tr>
-<tr><td>Notes:</td><td>${escapeStr(theJourney.notes, false, 32)}</td></tr>
+            if (APP.name === "showJourneys") {//we are editing a Journey:
+                for (aJourney of APP.journeys.getJourneys()) {
+                    if (aJourney.getLegIDs().includes(feature.get('id'))) {
+                        html += `
+<tr><td colspan="2">JOURNEY (${HTML.findTypeName(APP.journeytypes, aJourney.type)})</td></tr>
+<tr><td>From:</td><td>${aJourney.stopFrom.name}</td></tr>
+<tr><td>To:</td><td>${aJourney.stopTo.name}</td></tr>
+<tr><td>Start:</td><td>${HTML.formatDateTime(aJourney.startDateTime)}</td></tr>
+<tr><td>End:</td><td>${HTML.formatDateTime(aJourney.endDateTime)}</td></tr>
+<tr><td>Notes:</td><td>${escapeStr(aJourney.notes, false, 32)}</td></tr>
 `;
+                    }
                 }
+            } else if (APP.name === "showLegs") { // we are creating a new journey:
+                html += '<tr><td colspan="2">NEW JOURNEY</td></tr>';
+            } else  { // where are we...?
+                UI.SetMessage("Unexpected error in mapInfoPopup! [unknown APP]", errorMsg);
             }
         } else if (layerName === 'Stops') {
             html += `
-<tr><td>Stop:</td><td>${feature.get('name')} [${feature.get('id')}]</td></tr>
-`;
+<tr><td>Stop:</td><td>${feature.get('name')} [${feature.get('id')}]</td></tr>`;
         } else {
-            html += '<strong>Invalid Popup layerName!</strong>';
+            UI.SetMessage("Unexpected error in mapInfoPopup! [unknown Map Layer]", errorMsg);
         }
         if (count < total && total > 1) {
             html += '<tr class="plain"><td colspan="2"><hr/></td>';
@@ -170,13 +186,28 @@ HTML = {
     journeyLegInfoPopup: function (theLeg) {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
         let html =
-`<table>
-  <tr><td colspan="2">LEG (${HTML.findTypeName(APP.legtypes, theLeg.type)})</td></tr>
-  <tr><td>From:</td><td>${theLeg.stopFrom.name}</td></tr>
-  <tr><td>To:</td><td>${theLeg.stopTo.name}</td></tr>
-  <tr><td>Start:</td><td>${HTML.formatDateTime(theLeg.startDateTime)}</td></tr>
-  <tr><td>End:</td><td>${HTML.formatDateTime(theLeg.endDateTime)}</td></tr>
-  <tr><td>Notes:</td><td>${escapeStr(theLeg.notes, false, 32)}</td></tr>
+            `<table>
+<tr><td colspan="2">LEG (${HTML.findTypeName(APP.legtypes, theLeg.type)})</td></tr>
+<tr><td>From:</td><td>${theLeg.stopFrom.name}</td></tr>
+<tr><td>To:</td><td>${theLeg.stopTo.name}</td></tr>
+<tr><td>Start:</td><td>${HTML.formatDateTime(theLeg.startDateTime)}</td></tr>
+<tr><td>End:</td><td>${HTML.formatDateTime(theLeg.endDateTime)}</td></tr>
+<tr><td>Notes:</td><td>${escapeStr(theLeg.notes, false, 32)}</td></tr>
+</table>`;
+        return html;
+    }
+    ,
+//+++++++++++++++++++++++++++++++++++++++++++++++++++
+    journeyInfoPopup: function (theJourney) {
+//+++++++++++++++++++++++++++++++++++++++++++++++++++
+        let html =
+            `<table>
+  <tr><td colspan="2">JOURNEY (${HTML.findTypeName(APP.journeytypes, theJourney.type)})</td></tr>
+  <tr><td>From:</td><td>${theJourney.stopfrom}</td></tr>
+  <tr><td>To:</td><td>${theJourney.stopto}</td></tr>
+  <tr><td>Start:</td><td>${HTML.formatDateTime(theJourney.startdatetime)}</td></tr>
+  <tr><td>End:</td><td>${HTML.formatDateTime(theJourney.enddatetime)}</td></tr>
+  <tr><td>Notes:</td><td>${escapeStr(theJourney.notes, false, 32)}</td></tr>
 </table>`;
         return html;
     }
@@ -381,6 +412,25 @@ HTML = {
     }
     ,
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
+//+++++++++++++++++++++++++++++++++++++++++++++++++++
+    searchOSMrelationIDForm: function () {
+//+++++++++++++++++++++++++++++++++++++++++++++++++++
+        // do NOT forget opening ` !
+        return `
+
+<form id="searchOSMrelationIDForm" name="searchOSMrelationIDForm">
+<table class="tableInput">
+    <tr><th colspan="4" style="text-align: right"><input class="bigbutton" id="relationIdBtn" type="button" value="SHOW" /></th></tr>
+    <tr>
+     <td>OSMrelationID:</td><td><input id="osm_id"  type="number" /></td>
+     <td><input id="premerge"  type="checkbox" checked/></td><td>Try automatic pre-merge</td>
+    </tr>
+</table>
+</form>
+    `; // do NOT forget closing `; !!
+    }
+    ,
+//+++++++++++++++++++++++++++++++++++++++++++++++++++
     searchLegForm: function (legTypesMenu, withSkipBtn = false) {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
         // do NOT forget opening ` !
@@ -395,10 +445,10 @@ HTML = {
     </select> 
     </th>
   <th colspan="3" style="text-align: right">
+      <input type="checkbox" name="zoomtoextent" id="zoomtoextent" checked>Zoom map to search results
       <button class="bigbutton" type="reset"  name="reset" id="reset">Clear Form</button>
       ${withSkipBtn ? '<input class="bigbutton" type="button" name="skip" id="SkipBtn" value="Skip/Cancel"/>' : ''}      
       <input class="bigbutton" type="button" name="search" id="SearchBtn" value="START SEARCH" />
-      <input type="checkbox" name="zoomtoextent" id="zoomtoextent" checked>Zoom to extent
     </th>
  </tr>
 <tr>
@@ -428,7 +478,11 @@ HTML = {
     <td>
         <input id="col_km" name="id" type="number"  > 
     </td>
-    <td colspan=3"></td>
+    
+    <td colspan="1" style="text-align: right;">
+        <input type="checkbox"  name="searchinbbox" id="searchinbbox" >Limit search to current map
+    </td>
+    
 </tr>
 <tr >
     <td class="colname">From:</td>
@@ -468,7 +522,7 @@ HTML = {
         </select>
     </td>
     <td>
-        <input id="col_startdatetime" name="startdatetime" type="text" size="25" maxLength="64" />
+        <input id="col_startdatetime" name="startdatetime" type="text" size="25" maxLength="64" placeholder="yyyy-mm-ddThh:mm" />
     </td>
     <td class="colname">End:
     </td>
@@ -480,10 +534,10 @@ HTML = {
         </select>
     </td>
     <td>
-        <input id="col_enddatetime" name="enddatetime" type="text" size="25" maxLength="64"  >
-         <span class="tableInput" >[yyyy-mm-ddThh:mm] </span> 
-    <td class="colname">&nbsp; &nbsp; Sequential: </td>
-    <td> 
+        <input id="col_enddatetime" name="enddatetime" type="text" size="25" maxLength="64" placeholder="yyyy-mm-ddThh:mm" />
+    </td>
+    <td style="text-align: right;"> 
+    Sequential:
         <select id="col_timesequential" name="timesequential"  >
             <option value="" selected></option>
             <option value="false" >false</option>
@@ -492,7 +546,6 @@ HTML = {
     </td>
 </tr>   
 <tr >
-
       <td class="colname">Type:</td>
             <td></td>
             <td>
@@ -509,7 +562,7 @@ HTML = {
         </select>
     </td>
 
-    <td colspan="4">
+    <td colspan="2">
         <input id="col_notes" name="notes" type="text" size="65" maxLength="255"  > 
     </td>
 </tr>
@@ -532,19 +585,18 @@ HTML = {
 <tr>
     <th colspan="5">SEARCH FOR JOURNEYS THAT: 
      <select name="and_or" id="and_or" >
+     <option value="or" selected>comply to at least one of the search criteria (logical OR)</option>
      <option value="and"  >comply to all search criteria (logical AND)</option>
-        <option value="or" selected>comply to at least one of the search criteria (logical OR)</option>
     </select> 
     </th>
   <th colspan="3" style="text-align: right">
+      <input type="checkbox" name="zoomtoextent" id="zoomtoextent" checked>Zoom map to search results
       <button class="bigbutton" type="reset"  name="reset" id="reset">Clear Form</button>
       ${withSkipBtn ? '<input class="bigbutton" type="button" name="skip" id="SkipBtn" value="Skip/Cancel"/>' : ''}      
       <input class="bigbutton" type="button" name="search" id="SearchBtn" value="START SEARCH" />
-      <input type="checkbox" name="zoomtoextent" id="zoomtoextent" checked>Zoom to extent
     </th>
  </tr>
 <tr>
-
     <td class="colname">ID:
     </td>
     <td>
@@ -559,8 +611,11 @@ HTML = {
         <input id="col_id" name="id" type="number"  > 
     </td>
     
-    <td colspan="5">
+    <td colspan="4">
        
+    </td>
+    <td colspan="1" style="text-align: right;">
+        <input type="checkbox"  name="searchinbbox" id="searchinbbox" >Limit search to current map
     </td>
 </tr>
 <tr >
@@ -647,41 +702,25 @@ HTML = {
     ,
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
-    searchOSMrelationIDForm: function () {
-//+++++++++++++++++++++++++++++++++++++++++++++++++++
-        // do NOT forget opening ` !
-        return `
-
-<form id="searchOSMrelationIDForm" name="searchOSMrelationIDForm">
-<table class="tableInput">
-    <tr><th colspan="4" style="text-align: right"><input class="bigbutton" id="relationIdBtn" type="button" value="SHOW" /></th></tr>
-    <tr>
-     <td>OSMrelationID:</td><td><input id="osm_id"  type="number" /></td>
-     <td><input id="premerge"  type="checkbox" checked/></td><td>Try automatic pre-merge</td>
-    </tr>
-</table>
-</form>
-    `; // do NOT forget closing `; !!
-    },
-//+++++++++++++++++++++++++++++++++++++++++++++++++++
-//+++++++++++++++++++++++++++++++++++++++++++++++++++
     searchStopForm: function () {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
         // do NOT forget opening ` !
         return `
 <form id="searchForm" name="searchForm">
 <table class="tableInput">
-<tr><th colspan="4">Search for records that: 
-  <select name="and_or" id="and_or" >
-    <option value="and"  >comply to all search criteria (logical AND)</option>
-    <option value="or" selected>comply to at least one of the search criteria (logical OR)</option>
-  </select> </th>
- <th colspan="2" style="text-align: right">
-  <button class="bigbutton" type="reset"  name="reset" id="reset">Clear Form</button>
-  <input class="bigbutton" type="button" id="SearchBtn" value="START SEARCH" />
-  <input type="checkbox" name="zoomtoextent" id="zoomtoextent" checked>Zoom to extent
-</th>
-</tr>
+<tr>
+    <th colspan="5">SEARCH FOR STOPS THAT: 
+     <select name="and_or" id="and_or" >
+     <option value="or" selected>comply to at least one of the search criteria (logical OR)</option>
+     <option value="and"  >comply to all search criteria (logical AND)</option>
+    </select> 
+    </th>
+  <th colspan="3" style="text-align: right">
+      <input type="checkbox" name="zoomtoextent" id="zoomtoextent" checked>Zoom map to search results
+      <button class="bigbutton" type="reset"  name="reset" id="reset">Clear Form</button>   
+      <input class="bigbutton" type="button" name="search" id="SearchBtn" value="START SEARCH" />
+    </th>
+ </tr>
         <tr>
             <td class="colname">ID:
             </td>
@@ -709,6 +748,9 @@ HTML = {
             <td>
                 <input id="col_name" name="name" type="text" size="40" maxLength="255" >  
             </td>
+            <td colspan="1" style="text-align: right;">
+                <input type="checkbox"  name="searchinbbox" id="searchinbbox" >Limit search to current map
+            </td>
         </tr>
         
 <tr><td colspan="8"></td></tr>
@@ -719,7 +761,7 @@ HTML = {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
     ,
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
-    editJourneyForm: function (theJourney) {
+    editJourneyForm: function (theJourney, highlightLegs = true) {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
         // do NOT forget opening ` !
         return `
@@ -736,7 +778,7 @@ HTML = {
             <td class="colname">Type: </td>
             <td class="colname" style="text-align: left">${HTML.createTypesMenu(APP.journeytypes, false)}</td>     
             <td class="colname" rowSpan="4" style="text-align: center; align-content: center; vertical-align: top">
-                Legs:<br>${HTML.createLegsButtons(theJourney, true)} </td>
+                Legs:<br>${HTML.createLegsButtons(theJourney, true, highlightLegs)} </td>
             <td rowSpan="4" class="detailbox" id="leg_details"></td>
         </tr>  
         
@@ -766,7 +808,6 @@ HTML = {
         </tr>
         <tr ><td colspan="5"></td></tr>
        </table>
-       
 `; // do NOT forget closing `; !!
     }
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -939,7 +980,7 @@ HTML = {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
         let html = `
 <table class="tableFixHead"><thead>
-<tr><th>ID</th><th>From</th><th>To</th><th>Start</th><th>End</th><th>Type</th><th>Legs</th><th>Notes</th>
+<tr><th>ID</th><th>From</th><th>To</th><th>Km</th><th>Start</th><th>End</th><th>Time</th><th>Type</th><th>Legs</th><th>Notes</th>
 <th>Select:</th><th style="text-align: center"><input type="button" style="height:20px;width:60px" id="selectNone" value="none"/><br>
 <input type="button" style="height:20px;width:60px" id="selectAll" value="all"/></th>
 <th style="text-align: center"><input type="button" style="height:20px;width:60px" id="zoomTo" value="zoomto"/><br>
@@ -954,10 +995,12 @@ HTML = {
 	<td>${aJourney.id}</td>
 	<td>${aJourney.stopFrom.name}</td>
 	<td>${aJourney.stopTo.name}</td>
+	<td>${aJourney.km}</td>
 	<td>${(aJourney.startDateTime === '' || aJourney.startDateTime === 'null') ? '-' : HTML.formatDateTime(aJourney.startDateTime)}</td>
 	<td>${(aJourney.endDateTime === '' || aJourney.endDateTime === 'null') ? '-' : HTML.formatDateTime(aJourney.endDateTime)}</td>
+	<td>${aJourney.travelTime.txt}</td>
 	<td>${HTML.findTypeName(APP.journeytypes, aJourney.type)}</td>
-	<td>${HTML.createLegsButtons(aJourney, false)}</td>
+	<td>${HTML.createLegsButtons(aJourney, false, true)}</td>
 	<td>${HTML.replaceBR(aJourney.notes)}</td>
 	<td style="text-align: center"><input type="checkbox" id="select_${aJourney.id}"  ${aJourney.selected ? 'checked' : ''} /></td>
 `;
@@ -967,7 +1010,7 @@ HTML = {
 `;
             }
         }
-        html += '</tr><tr><th colspan="12"></th></tr></table>';
+        html += '</tr><tr><th colspan="14">&nbsp;</th></tr></table>';
         return html;
     }
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
@@ -1015,7 +1058,7 @@ HTML = {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
     showOSMobjectsTable: function (osmObjects, mainKeys) {
 //+++++++++++++++++++++++++++++++++++++++++++++++++++
-        let html = '<table class="tableFixHead"><tr><thead><th>ID</th>';
+        let html = '<table class="tableFixHead"><tr ><thead ><th style="line-height: 50px;">ID</th>';
         for (let tagKey of mainKeys) {
             html += "<th>" + tagKey + "</th>";
         }

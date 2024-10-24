@@ -14,7 +14,9 @@ let APP = {
     map: undefined,
     stops : undefined,
     restart: function () {
-        openURLwithCurrentLocation(APP.url);
+        const curZoom = this.map.mapView.getZoom();
+        const curCenter = ol.proj.transform(this.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
+        location.replace(this.url + "?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom);
     }
 };
 
@@ -42,7 +44,7 @@ async function initShowStops() {
         APP.map.displayLayer("Legs", false);
         /*-- ********** -*/
         // ** step 2:
-        showSearchForm();
+        showSearchStopsForm();
     } else {
         UI.SetMessage("Could not initialise DB connection.", errorMsg);
     }
@@ -63,7 +65,7 @@ function selectClickedStop(evt) {
 }
 
 /*-- STEP 2: Load Search Form and wait form it to be submitted  -*/
-function showSearchForm() {
+function showSearchStopsForm() {
     let theWhereStr = '';
     UI.SetMessage("Search Stops...", workflowMsg);
     
@@ -78,19 +80,26 @@ function showSearchForm() {
 
 /*-- STEP 3: Load Stops & show them  -*/
 async function searchAndShowStops(theWhereStr) {
+    document.body.style.cursor = "progress";
     let zoomToExtent = document.getElementById("zoomtoextent").checked;
+    let searchInBbox = document.getElementById("searchinbbox").checked;
+    if (searchInBbox) { //override Zoom toExtent setting:
+        zoomToExtent = false;
+        document.getElementById("zoomtoextent").checked = false;
+    }
     let foundStops = new StopsCollection(APP.map.getLayerDataByName("Stops"));
-    await foundStops.loadFromDB(theWhereStr);
+    await foundStops.loadFromDB(theWhereStr, searchInBbox);
     UI.SetMessage(foundStops.getNumStops() + " Stops found in DB. Click in map or table to alter selection...", workflowMsg);
     foundStops.mapStops(zoomToExtent);
     displayStopsInTable(foundStops, false);
+    document.body.style.cursor = "auto";
     let NewSearchBtn = document.getElementById("action1Btn");
     NewSearchBtn.value = 'New DB Search';
     NewSearchBtn.style.display = "inline";
     NewSearchBtn.addEventListener("click", function () {
         // show form again to do new search of stops from DB
         UI.resetActionBtns();
-        showSearchForm();
+        showSearchStopsForm();
     });
     return foundStops;
 }
@@ -179,20 +188,25 @@ function editStop(theStops, ID) {
         }
     }
 }
+
 /*-- Delete selected Stop  -*/
 async function deleteStop(theStops, ID) {
-    const theStr = `Are you REALLY sure you want to delete this Stop [id=${ID}]?\nThis action can NOT be undone!`;
+    let theStr = `Are you sure you want to delete this Stop [id=${ID}]?`;
     if (confirm(theStr)) {
-        if (await DB.deleteStop(ID)) { //removed from DB
-            //reload from DB:
-            await theStops.loadFromDB(theStops.getWhereStr()); // re-use existing WHERE statement to reload same stops
-            theStops.mapStops(false);
-            displayStopsInTable(theStops, "workflow", false);
-            UI.SetMessage("Deleted Stop. Now " + theStops.getNumStops()
-                + " Stops available. Click in map or table to alter selection...", workflowMsg);
-        } else {
-            UI.SetMessage("Deletion of Stop failed. Click in map or table to alter selection...", workflowMsg);
+        theStr = `Are you REALLY sure you want to delete this Stop [id=${ID}]?\nThis action can NOT be undone!`;
+        if (confirm(theStr)) {
+            if (await DB.deleteStop(ID)) { //removed from DB
+                //reload from DB:
+                await theStops.loadFromDB(theStops.getWhereStr()); // re-use existing WHERE statement to reload same stops
+                UI.SetMessage("Deleted Stop. Now " + theStops.getNumStops() + " Stops found in DB. Click in map or table to alter selection...", workflowMsg);
+                theStops.mapStops(false, true);
+                displayStopsInTable(theStops, false);
+            } else {
+                UI.SetMessage("Deletion of Stop failed. Click in map or table to alter selection...", workflowMsg);
+            }
+
         }
     }
 }
+
 

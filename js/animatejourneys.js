@@ -19,7 +19,9 @@ let APP = {
     // legtypes: undefined,
     journeytypes: undefined,
     restart: function () {
-        openURLwithCurrentLocation(APP.url);
+        const curZoom = this.map.mapView.getZoom();
+        const curCenter = ol.proj.transform(this.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
+        location.replace(this.url + "?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom);
     }
 };
 
@@ -170,15 +172,16 @@ function highlightLegOfJourney(theJourneyID, theLegID, highlight) {
     let theLeg = APP.journeys.getJourneyById(theJourneyID).getLegsCollection().getLegById(theLegID);
     if (highlight) {
         theLeg.selected = !theLeg.selected;
-        // let X = document.getElementById("btn_" + theLegID).getBoundingClientRect().right - 10;
-        // let Y = document.getElementById("btn_" + theLegID).getBoundingClientRect().top - 170;
-        // UI.SetMessage(HTML.journeyLegInfoPopup(theLeg), dataMsg, [X, Y]);
+        let X = document.getElementById("btn_" + theLegID).getBoundingClientRect().right - 10;
+        let Y = document.getElementById("btn_" + theLegID).getBoundingClientRect().top - 170;
+        UI.SetMessage(HTML.journeyLegInfoPopup(theLeg), dataMsg, [X, Y]);
     } else {
         theLeg.selected = !theLeg.selected;
-        // UI.SetMessage(' ', hideMsg, null);
+        UI.SetMessage(' ', hideMsg, null);
     }
     theLeg.selectOnMap(theLeg.selected, APP.map.getLayerDataByName("Journeys"));
 }
+
 
 
 

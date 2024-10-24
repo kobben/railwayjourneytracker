@@ -17,10 +17,12 @@ let APP = {
     legstops: undefined, //these are the stops that are end- or startpoint of the selected legs
     legs: undefined,
     legtypes: undefined,
-    journeys: undefined,
+    journeyprops: undefined, //only journey properties are need
     journeytypes: undefined,
     restart: function () {
-        openURLwithCurrentLocation(APP.url);
+        const curZoom = this.map.mapView.getZoom();
+        const curCenter = ol.proj.transform(this.map.mapView.getCenter(), 'EPSG:3857', 'EPSG:4326');
+        location.replace(this.url + "?start=" + curCenter[0] + "," + curCenter[1] + "," + curZoom);
     }
 };
 
@@ -47,13 +49,13 @@ async function initShowLegs() {
         APP.map.StopSelectedStyle = MAP.stopStyleRed;
         APP.map.LegStyle = MAP.lineStyleBlue;
         APP.map.LegSelectedStyle = MAP.lineStyleRed;
-        APP.map.JourneyStyle = MAP.lineStyleGrey;
+        APP.map.JourneyStyle = MAP.lineStyleGreen;
         APP.map.JourneySelectedStyle = MAP.lineStyleRed;
         APP.map.displayLayer("openRailwayMap", false);
         APP.map.displayLayer("Journeys", false);
         // create datastructures needed later:
         APP.legs = new LegsCollection(APP.map.getLayerDataByName("Legs"));
-        APP.journeys = new JourneysCollection(APP.map.getLayerDataByName("Journeys"));
+        APP.journeyprops = new JourneyPropsCollection();
         APP.legstops = new StopsCollection(APP.map.getLayerDataByName("Stops"));
         APP.allstops = new StopsCollection(APP.map.getLayerDataByName("NewStops")); // if mapped, then on NewStops layer!
         await APP.allstops.loadFromDB(''); //empty WhereStr makes that ALL stops are loaded.
@@ -62,7 +64,7 @@ async function initShowLegs() {
         // ***********
         if (startWithLegID) {
             let theWhereStr = 'id=eq.' + startWithLegID;
-            doLegsSearchAndShow(theWhereStr, true, true, true, null);
+            doLegsSearchAndShow(theWhereStr, true, true, true, null, true, false);
         }
         showSearchLegsForm(false, true, true); // in Utils.js
         UI.SetMessage("Search for Legs in DB...", workflowMsg);
@@ -248,7 +250,7 @@ function truncateSelectedLeg() {
                 UI.SetMessage("Cancelled. Click in map or table to alter selection...", workflowMsg);
                 // redo original search
                 UI.showActionBtns();
-                doLegsSearchAndShow(APP.legs.getWhereStr(), true, true, false);
+                doLegsSearchAndShow(APP.legs.getWhereStr(), true, true, false, null, true, false);
             });
         }
     } catch (e) {
@@ -306,10 +308,12 @@ function mergeSelectedLegs() {
             let leg1 = APP.legs.getSelectedLegs()[1];
             let leg2 = APP.legs.getSelectedLegs()[0];
             UI.SetMessage("Merging legs...", workflowMsg);
-
-            // first figure out how the two are connected by measuring shortest distance
-            const d12 = turf.distance(turf.point(leg1.stopTo.geojson.coordinates), turf.point(leg2.stopFrom.geojson.coordinates), {units: 'degrees'});
-            const d21 = turf.distance(turf.point(leg2.stopTo.geojson.coordinates), turf.point(leg1.stopFrom.geojson.coordinates), {units: 'degrees'});
+            const l1t = new jsts.geom.Coordinate(leg1.stopTo.geojson.coordinates[0], leg1.stopTo.geojson.coordinates[1]);
+            const l1f = new jsts.geom.Coordinate(leg1.stopFrom.geojson.coordinates[0], leg1.stopFrom.geojson.coordinates[1]);
+            const l2t = new jsts.geom.Coordinate(leg2.stopTo.geojson.coordinates[0], leg2.stopTo.geojson.coordinates[1]);
+            const l2f = new jsts.geom.Coordinate(leg2.stopFrom.geojson.coordinates[0], leg2.stopFrom.geojson.coordinates[1]);
+            const d12 = l1t.distance(l2f); //uses jsts.distance() !
+            const d21 = l2t.distance(l1f); //uses jsts.distance() !
             if (d12 > d21) { // if not then do nothing, order leg1 -> leg2 is correct
                 // otherwise change order leg2 -> leg1
                 leg1 = APP.legs.getSelectedLegs()[0];
@@ -356,7 +360,7 @@ function mergeSelectedLegs() {
             });
         }
     } catch (e) {
-        UI.SetMessage("First search and select 2 Legs...!", errorMsg);
+        UI.SetMessage("Unexpected error in mergeSelectedLegs()...!", errorMsg);
     }
 }
 
@@ -402,7 +406,7 @@ function editLeg(theLegs, ID) {
                 aLeg.timesequential = document.getElementById("col_timesequential").value;
                 if (await DB.patchLeg(aLeg, ID)) {
                     // RELOAD from DB
-                    doLegsSearchAndShow(theLegs.getWhereStr(), displayTable = true, displayMap = true, zoomToExtent = false);
+                    doLegsSearchAndShow(theLegs.getWhereStr(), displayTable = true, displayMap = true, false, null, true, false);
                     UI.SetMessage("Edited Leg. Click in map or table to alter selection...", workflowMsg);
                 }  else {
                     displayLegsInTable(theLegs, false);
@@ -429,16 +433,19 @@ async function deleteLeg(theLegs, ID) {
         }
         UI.SetMessage("Deletion of Leg cancelled. Click in map or table to alter selection...", workflowMsg);
     } else {
-        const theStr = `Are you REALLY sure you want to delete this Leg [id=${ID}]?\nThis action can NOT be undone!`;
+        let theStr = `Are you sure you want to delete this Leg [id=${ID}]?`;
         if (confirm(theStr)) {
-            if (await DB.deleteLeg(ID)) { //removed from DB
-                //reload from DB:
-                await theLegs.loadFromDB(theLegs.getWhereStr(), APP.legstops); // re-use existing WHERE statement to reload same legs
-                UI.SetMessage("Deleted Leg. Now " + theLegs.getNumLegs() + " Legs found in DB. Click in map or table to alter selection...", workflowMsg);
-                theLegs.mapLegs(APP.legstops, false);
-                displayLegsInTable(theLegs, false);
-            } else {
-                UI.SetMessage("Deletion of Leg failed. Click in map or table to alter selection...", workflowMsg);
+            theStr = `Are you REALLY sure you want to delete this Leg [id=${ID}]?\nThis action can NOT be undone!`;
+            if (confirm(theStr)) {
+                if (await DB.deleteLeg(ID)) { //removed from DB
+                    //reload from DB:
+                    await theLegs.loadFromDB(theLegs.getWhereStr(), APP.legstops, false); // re-use existing WHERE statement to reload same legs
+                    UI.SetMessage("Deleted Leg. Now " + theLegs.getNumLegs() + " Legs found in DB. Click in map or table to alter selection...", workflowMsg);
+                    theLegs.mapLegs(APP.legstops, false, true);
+                    displayLegsInTable(theLegs, false);
+                } else {
+                    UI.SetMessage("Deletion of Leg failed. Click in map or table to alter selection...", workflowMsg);
+                }
             }
         }
     }
@@ -486,7 +493,6 @@ async function collectIntoJourney(selectedLegs) {
 
             MAP.zoomToBbox(tmpJourney.calculateBbox());
             tmpJourney.showOnMap(APP.map.getLayerDataByName("Journeys"));
-            APP.journeys.addJourney(tmpJourney);
             showSaveJourneyForm(tmpJourney);
         }
     }
@@ -500,7 +506,7 @@ function showSaveJourneyForm(theJourney) {
     // if dates are NULL in DB, show them as empty string in form;
     if (theJourney.startDateTime === null || theJourney.startDateTime === 'null') theJourney.startDateTime = '';
     if (theJourney.endDateTime === null || theJourney.endDateTime === 'null') theJourney.endDateTime = '';
-    UI.workflowPane.innerHTML = HTML.editJourneyForm(theJourney);
+    UI.workflowPane.innerHTML = HTML.editJourneyForm(theJourney, false);
     for (let i=0; i < APP.journeytypes.length; i++) {
         if (parseInt(APP.journeytypes[i].id) === theJourney.type) document.getElementById("col_type").selectedIndex = i;
     }
@@ -509,48 +515,51 @@ function showSaveJourneyForm(theJourney) {
         theJourney.notes = escapeStr(document.getElementById("journey_notes").value, true);
         theJourney.type = parseInt(document.getElementById("col_type").value);
         if (await DB.addJourney(theJourney) ) {
-            UI.workflowPane.innerHTML = '';
-            theJourney.removeFromMap(APP.map.getLayerDataByName("Journeys"));
-            APP.journeys.removeJourney(theJourney);
-            //redo legs search to get table again:
-            doLegsSearchAndShow(APP.legs.getWhereStr(), true, true, true, null, false);
-            UI.showActionBtns(); // to enable New DB search again
             UI.SetMessage("Saved Journey. Select Legs or search for Legs in DB...", workflowMsg);
             // now will be at step 4 again: waiting for click in the map...
         } else {
-            theJourney.removeFromMap(APP.map.getLayerDataByName("Journeys"));
-            APP.journeys.removeJourney(theJourney);
-            //redo legs search to get table again.
-            doLegsSearchAndShow(APP.legs.getWhereStr(), true, true, true, null, false);
-            APP.map.displayLayer("Journeys", false); //off again
-            UI.showActionBtns();
             UI.SetMessage("Saving Journey FAILED. Click in map or table to alter selection...", workflowMsg);
         }
+        UI.workflowPane.innerHTML = '';
+        theJourney.removeFromMap(APP.map.getLayerDataByName("Journeys"));
+        //redo legs search to get table again:
+        doLegsSearchAndShow(APP.legs.getWhereStr(), true, true, false, null, true, false);
+        UI.showActionBtns(); // to enable New DB search again
+        APP.map.displayLayer("Journeys", false); //off again
     });
     let CancelBtn = document.getElementById("CancelBtn");
     CancelBtn.addEventListener("click", function () {
         theJourney.removeFromMap(APP.map.getLayerDataByName("Journeys"));
-        APP.journeys.removeJourney(theJourney);
         //redo legs search to get table again.
-        doLegsSearchAndShow(APP.legs.getWhereStr(), true, true, true, null, false);
+        doLegsSearchAndShow(APP.legs.getWhereStr(), true, true, true, null, true, false);
         APP.map.displayLayer("Journeys", false); //off again
         UI.showActionBtns();
-
         UI.SetMessage("Cancelled. Click in map or table to alter selection...", workflowMsg);
     });
 }
 
+function showJourneyProps(theJourneyID, show) {
+    let theJourney = APP.journeyprops.getJourneyPropsById(theJourneyID);
+    if (show) {
+        // theJourney.selected = !theJourney.selected;
+        let X = document.getElementById("btn_" + theJourneyID).getBoundingClientRect().right - 10;
+        let Y = document.getElementById("btn_" + theJourneyID).getBoundingClientRect().top - 170;
+        UI.SetMessage(HTML.journeyInfoPopup(theJourney), dataMsg, [X, Y]);
+    } else {
+        // theJourney.selected = !theJourney.selected;
+        UI.SetMessage(' ', hideMsg, null);
+    }
+}
 
-function highlightLegOfJourney(theJourneyID, theLegID, highlight) {
-    let theLeg = APP.journeys.getJourneyById(theJourneyID).getLegsCollection().getLegById(theLegID);
-    if (highlight) {
-        theLeg.selected = !theLeg.selected;
+function showLegProps(theLegID, show) {
+    let theLeg = APP.legs.getLegById(theLegID);
+    if (show) {
         let X = document.getElementById("btn_" + theLegID).getBoundingClientRect().right - 10;
         let Y = document.getElementById("btn_" + theLegID).getBoundingClientRect().top - 170;
         UI.SetMessage(HTML.journeyLegInfoPopup(theLeg), dataMsg, [X, Y]);
     } else {
-        theLeg.selected = !theLeg.selected;
         UI.SetMessage(' ', hideMsg, null);
     }
-    theLeg.selectOnMap(theLeg.selected, APP.map.getLayerDataByName("Journeys"));
+    theLeg.selected = !theLeg.selected;
+    theLeg.selectOnMap(theLeg.selected, APP.map.getLayerDataByName("Legs"));
 }

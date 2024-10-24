@@ -59,6 +59,19 @@ async function queryOSM(query, outType) {
 //    VARIOUS UTILITY FUNCTIONS
 /*-- ************************************************************************************************************** -*/
 
+function calculateTravelTime(startDT, endDT) {
+    const edt = new Date(endDT);
+    const sdt = new Date(startDT);
+    const hours= (edt - sdt) / (1000*60*60);
+    const fullhours = Math.floor(hours);
+    let travelTime = {
+        hrs : hours,
+        txt : fullhours + ':' + Math.floor(60 * (hours - fullhours))
+    };
+    return travelTime;
+}
+
+
 function getURIParameterByName(name) {
     let regex = new RegExp("[\\?&]" + name + "=([^&#]*)"), results = regex.exec(window.location.search);
     return results === null ? "" : decodeURIComponent(results[1].replace(/\+/g, " "));
@@ -210,20 +223,21 @@ function showJourneyOfLeg(theJourneyID) {
 
 // ***********
 // Load Search Form and wait for it to be submitted
-// after submission in ==> doLegsSearchAndShow
+// after submission ==> doLegsSearchAndShow
+// This is in Utils.js because several APPs use it...
 // ***********
 function showSearchLegsForm(withSkipBtn = false, displayTable = true, displayMap = true, doNextStep = null, editable = true) {
     UI.workflowPane.innerHTML = HTML.searchLegForm(HTML.createTypesMenu(APP.legtypes, true), withSkipBtn);
     if (withSkipBtn) {
         let SkipBtn = document.getElementById("SkipBtn");
         SkipBtn.addEventListener("click",  function () {
-            // if a next step was definde, just skip entirely
+            // if a next step was defined, just skip entirely
             if (doNextStep !== null) {
                 doNextStep.call();
             } else {
-                // else, to make sure we return NO legs, but we do have all data structures in place, search for *nothing* :
-                let theWhereStr = 'id=eq.-99';
-                doLegsSearchAndShow(theWhereStr, displayTable, displayMap, false, null, editable);
+                // else, to make sure we return NO legs, but we do have all data structures in place, we search for *nothing* :
+                let theWhereStr = 'id=eq.-99999';
+                doLegsSearchAndShow(theWhereStr, displayTable, displayMap, false, doNextStep, editable, false);
             }
         });
     }
@@ -232,17 +246,23 @@ function showSearchLegsForm(withSkipBtn = false, displayTable = true, displayMap
         let theWhereStr = await updateWhereStr('legs',
             ['id', 'km', 'stopfrom', 'stopto', 'notes', 'startdatetime', 'enddatetime', 'timesequential', 'type']);
         let zoomToExtent = document.getElementById("zoomtoextent").checked;
-        doLegsSearchAndShow(theWhereStr, displayTable, displayMap, zoomToExtent, doNextStep, editable);
+        let searchInBbox = document.getElementById("searchinbbox").checked;
+        if (searchInBbox) { //override Zoom toExtent setting:
+            zoomToExtent = false;
+            document.getElementById("zoomtoextent").checked = false;
+        }
+        doLegsSearchAndShow(theWhereStr, displayTable, displayMap, zoomToExtent, doNextStep, editable, searchInBbox);
     });
-    // ** wait for form to be submitted, then next step  **//
+    // ** wait for form to be submitted, then call doNextStep  **//
 }
 
 // do actual DB search and show results
 // used in showSearchLegsForm() above and to redo existing searches elsewhere
 // returns APP.legs and APP.legstops
 async function doLegsSearchAndShow(theWhereStr, displayTable = true, displayMap = true,
-                                   zoomToExtent = true, doNextStep = null, editable = true) {
-    await APP.legs.loadFromDB(theWhereStr, APP.legstops);
+                                   zoomToExtent = true, doNextStep = null, editable = true, searchInBbox = false) {
+    document.body.style.cursor = "progress";
+    await APP.legs.loadFromDB(theWhereStr, APP.legstops, searchInBbox);
     if (displayMap) APP.legs.mapLegs(APP.legstops, zoomToExtent);
     if (displayTable) {
         displayLegsInTable(APP.legs, false, editable);
@@ -250,6 +270,13 @@ async function doLegsSearchAndShow(theWhereStr, displayTable = true, displayMap 
     } else {
         UI.workflowPane.innerHTML = '';
     }
+    // if needed, also get properties of the journeys that these legs are part of...
+    if (APP.journeyprops) {
+        let foundJourneyIDs = APP.legs.collectJourneysOfLegs();
+        let getJourneysWhere = 'id=in.(' + foundJourneyIDs + ')';
+        if (APP.journeyprops) await APP.journeyprops.loadFromDB(getJourneysWhere);
+    }
+    document.body.style.cursor = "auto";
     if (doNextStep !== null) doNextStep.call();
 }
 
@@ -460,14 +487,15 @@ function reverseLineGeom(geom) {
 }
 // takes a Line element with descriptors and reverses/flips it fully
 function flipLine(line) {
-    line.geom = reverseLineGeom(line.geom);
-    let tmpInd = line.linkStartInd;
-    let tmpWhere = line.linkStartWhere;
-    line.linkStartInd = line.linkEndInd;
-    line.linkStartWhere = line.linkEndWhere;
-    line.linkEndInd = tmpInd;
-    line.linkEndWhere = tmpWhere;
-    return line;
+    UI.SetMessage("unexpected use of DEPRECATED function flipline [in Utils.js]", errorMsg);
+    // line.geom = reverseLineGeom(line.geom);
+    // let tmpInd = line.linkStartInd;
+    // let tmpWhere = line.linkStartWhere;
+    // line.linkStartInd = line.linkEndInd;
+    // line.linkStartWhere = line.linkEndWhere;
+    // line.linkEndInd = tmpInd;
+    // line.linkEndWhere = tmpWhere;
+    // return line;
 }
 //calculate OSM style bbox from set of array of coords in [lon,lat]:
 function calcBbox(coords) {
