@@ -183,7 +183,7 @@ function showChosenRelation(json) {
             relStop.name = member.ref.toString(); //NOTE: this is not the actual stop name, that has to be queried separately later!
             relStops.push(relStop);
             numStops++;
-        } else if (member.role === "platform") {
+        } else if (member.role.startsWith("platform"))  { // to also include platform_exit_only & entry_only
             numPlatforms++;
         } else if (member.type === "way" &&
             (member.role === "" || member.role === "forward" || member.role === "backward")) {
@@ -195,7 +195,7 @@ function showChosenRelation(json) {
             routeGeom.push(routeGeomPart);
         } else {
             // TODO: or maybe accept more member roles (or all??)
-            console.log("found member of unexpected type: ");
+            console.log("Member of unused type or role: ");
             console.log(member);
             numRest++;
         }

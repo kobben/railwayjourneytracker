@@ -172,12 +172,12 @@ function highlightLegOfJourney(theJourneyID, theLegID, highlight) {
     let theLeg = APP.journeys.getJourneyById(theJourneyID).getLegsCollection().getLegById(theLegID);
     if (highlight) {
         theLeg.selected = !theLeg.selected;
-        let X = document.getElementById("btn_" + theLegID).getBoundingClientRect().right - 10;
-        let Y = document.getElementById("btn_" + theLegID).getBoundingClientRect().top - 170;
-        UI.SetMessage(HTML.journeyLegInfoPopup(theLeg), dataMsg, [X, Y]);
+        // let X = document.getElementById("btn_" + theLegID).getBoundingClientRect().right - 10;
+        // let Y = document.getElementById("btn_" + theLegID).getBoundingClientRect().top - 170;
+        // UI.SetMessage(HTML.journeyLegInfoPopup(theLeg), dataMsg, [X, Y]);
     } else {
         theLeg.selected = !theLeg.selected;
-        UI.SetMessage(' ', hideMsg, null);
+        // UI.SetMessage(' ', hideMsg, null);
     }
     theLeg.selectOnMap(theLeg.selected, APP.map.getLayerDataByName("Journeys"));
 }
@@ -200,7 +200,7 @@ async function animateJourneys() {
             let aLeg=LL[l];
             highlightLegOfJourney(aJourney.getID(), aLeg.getID(), true);
             APP.map.mapObj.render();
-            console.log('j=' + j + '; l=' + l);
+            // console.log('j=' + j + '; l=' + l);
             await sleep(1000);
             highlightLegOfJourney(aJourney.getID(), aLeg.getID(), false);
         }

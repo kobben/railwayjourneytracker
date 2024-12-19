@@ -7,6 +7,7 @@
 /*-- **************************** -*/
 async function getOSMandDoNextstep(query, outType, nextStepFunction, showIn) {
     let succes = false;
+    document.body.style.cursor = "progress";
     UI.SetMessage("Querying OpenStreetMap...", workflowMsg);
     while (!succes) {
         let json = await queryOSM(query, outType);
@@ -15,16 +16,16 @@ async function getOSMandDoNextstep(query, outType, nextStepFunction, showIn) {
             const messageStr ="Error querying OSM OverPass: [" + json.status + "] "
                 + json.statusText + "\nDO YOU WANT TO RETRY...?";
             succes = !confirm(messageStr);
+            document.body.style.cursor = "auto";
         } else { //succces
             succes = true;
             document.body.style.cursor = "auto";
-            UI.SetMessage("Ready querying OpenStreetMap.", workflowMsg);
+            UI.SetMessage("Ready querying OSM OverPass.", workflowMsg);
             nextStepFunction(json, showIn);
         }
     }
 }
 async function queryOSM(query, outType) {
-    document.body.style.cursor = "progress";
     //create a proper Overpass QL call:
     const OverPassUrl = "https://overpass-api.de/api/interpreter?data=";
     const jsonFormat = "[out:json];";
@@ -40,18 +41,16 @@ async function queryOSM(query, outType) {
         if (response.ok) { // if HTTP-status is 200-299
             // get the response body
             let json = await response.json();
-            document.body.style.cursor = "auto";
-            return json; // make function return true:
+            return json; // makes function return true:
         } else {
             let jsonStr = `{"succes": false, "status": ${response.status}, "statusText": "${response.statusText}" }`;
             let json = JSON.parse(jsonStr);
-            document.body.style.cursor = "auto";
-            return json; // make function return false
+            return json; // makes function return false
         }
     } catch (e) {
-        const messageStr ="UNEXPECTED Error querying OSM OverPass: [" + e + "] "
-            + "\nDO YOU WANT TO RETRY...?";
-        succes = !confirm(messageStr);
+        let jsonStr = `{"succes": false, "status": "UNEXPECTED (is there an internet connection?)", "statusText": "" }`;
+        let json = JSON.parse(jsonStr);
+        return json;// makes function return false
     }
 }
 

@@ -4,9 +4,9 @@
 
 
 - [x] [18/10/24] KMs in Legs seems to be wrong? => calc in SQL trigger changed to `km = round(st_length(geom,true)/1000`
-- [ ] [18/10/24] When canceling OSMquery, busy cursor remains active.
-- [ ] [12/10/24] When gathering relation objects: "platform_entry_only" and "platform_exit_only" are not recognised.
-- [x] [28/06/24] `Journeys > select in extent`: does not load legs of journeys that are IN extent, where the leg is OUT of extent. => added check and extra DB search if necessary in `loadJourneyLegsFromDB()` (in `Models.js`}
+- [x] [18/10/24] When canceling OSMquery, busy cursor remains active.=> added code in `OSMquery()` (`Utils.js`).
+- [x] [12/10/24] When gathering relation objects: "platform_entry_only" and "platform_exit_only" are not recognised. => added check in `showChosenRelation(json)` (`constructlegs.js`)
+- [x] [28/06/24] `Journeys > select in extent`: does not load legs of journeys that are IN extent, where the leg is OUT of extent. => added check and extra DB search if necessary in `loadJourneyLegsFromDB()` (`Models.js`}
 - [x] [14/06/24] After 'add stop from  OSM' and then Save, another `constructstops.js` is started. => replaced `windows.open()' with ` location.replace()'.
 - [x] [20/05/24] Missing Cancel in manual merge in `constructlegs.js` => added Cancel button and code in `constructLineManually()`
 - [x] [27/04/24] In DrawLeg blank page when choosing 'show existing legs' (OK when choosing 'skip') => APP.journeystops (unneeded here) actually failed before this; added test before attempting. 
@@ -25,7 +25,8 @@
 - [ ] [07/09/24] Add travel time to legs output
 - [x] [07/09/24] Add travel time to journeys output => done [07/09/24]
 - [x] [18/05/24] 'busy' pointer while searching in DB (especially "legs in extent'] => done [29/07/24]
-- [x] [27/04/24] Add cumulative km's to Journey tables => done [07/09/24]
+- [ ] [01/04/24] Deal with time zones
+- [ ] [01/04/24] Abolish sequential legs
 - [x] [13/01/24] Mouseover popup of journey info in Legs table (like in `showjourneys.js`). => done [25/01/24]
 - [x] [16/12/23] When selecting stop in pull-down, zoom to it => done [18/12/23].
 - [x] [06/12/23] Enable database search by bbox (current map extent or box drawn) => done [21/02/24].
